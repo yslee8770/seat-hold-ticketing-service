@@ -1,5 +1,6 @@
 package com.example.ticket.api.admin.dto;
 
+import com.example.ticket.domain.event.Event;
 import com.example.ticket.domain.event.EventStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,7 +16,15 @@ public final class AdminEventDto {
             @NotBlank String title,
             @NotNull Instant salesOpenAt,
             @NotNull Instant salesCloseAt
-    ) {}
+    ) {
+        public Event toEvent() {
+            return Event.draft(
+                    title,
+                    salesOpenAt,
+                    salesCloseAt
+            );
+        }
+    }
 
     public record AdminEventResponse(
             long eventId,
@@ -23,5 +32,15 @@ public final class AdminEventDto {
             EventStatus status,          // DRAFT | OPEN | CLOSED
             Instant salesOpenAt,
             Instant salesCloseAt
-    ) {}
+    ) {
+        public static AdminEventResponse from(Event event) {
+            return new AdminEventResponse(
+                    event.getId(),
+                    event.getTitle(),
+                    event.getStatus(),
+                    event.getSalesOpenAt(),
+                    event.getSalesCloseAt()
+            );
+        }
+    }
 }

@@ -3,6 +3,7 @@ package com.example.ticket.api.admin;
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventCreateRequest;
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventResponse;
 import com.example.ticket.common.ApiResponse;
+import com.example.ticket.service.AdminEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -12,18 +13,15 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AdminEventController {
 
-    // private final AdminEventService adminEventService;
-
+    private final AdminEventService adminEventService;
 
     /**
      * 이벤트 생성(DRAFT)
      * POST /admin/events
      */
     @PostMapping
-    public ApiResponse<AdminEventResponse> createEvent(@Valid @RequestBody AdminEventCreateRequest request) {
-        // TODO: AdminEventResponse res = adminEventService.createDraft(request);
-        throw new UnsupportedOperationException("Not implemented");
-        // return Responses.ok(res);
+    public AdminEventResponse createEvent(@Valid @RequestBody AdminEventCreateRequest request) {
+        return adminEventService.createDraft(request);
     }
 
     /**
@@ -31,10 +29,8 @@ public class AdminEventController {
      * POST /admin/events/{eventId}/open
      */
     @PostMapping("/{eventId}/open")
-    public ApiResponse<AdminEventResponse> openEvent(@PathVariable long eventId) {
-        // TODO: AdminEventResponse res = adminEventService.open(eventId);
-        throw new UnsupportedOperationException("Not implemented");
-        // return Responses.ok(res);
+    public AdminEventResponse openEvent(@PathVariable long eventId) {
+        return adminEventService.open(eventId);
     }
 
     /**
@@ -42,9 +38,7 @@ public class AdminEventController {
      * POST /admin/events/{eventId}/close
      */
     @PostMapping("/{eventId}/close")
-    public ApiResponse<AdminEventResponse> closeEvent(@PathVariable long eventId) {
-        // TODO: AdminEventResponse res = adminEventService.close(eventId);
-        throw new UnsupportedOperationException("Not implemented");
-        // return Responses.ok(res);
+    public AdminEventResponse closeEvent(@PathVariable long eventId) {
+        return adminEventService.close(eventId);
     }
 }
