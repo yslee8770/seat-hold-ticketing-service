@@ -25,5 +25,14 @@ public final class AdminSeatDto {
     public record AdminSeatBulkUpsertResponse(
             long eventId,
             int createdCount
-    ) {}
+    ) {
+        public static AdminSeatBulkUpsertResponse of(
+                long eventId,
+                int createdCount
+        ){
+            return new AdminSeatBulkUpsertResponse(
+                    eventId,
+                    createdCount);
+        }
+    }
 }

@@ -15,6 +15,9 @@ spring:
     properties:
       hibernate:
         default_batch_fetch_size: 100
+        hibernate.order_inserts: true
+        hibernate.order_updates: true
+        hibernate.jdbc.batch_versioned_data: true
         jdbc:
           batch_size: 100
         order_inserts: true

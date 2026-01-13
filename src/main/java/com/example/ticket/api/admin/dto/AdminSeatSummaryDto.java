@@ -11,5 +11,19 @@ public final class AdminSeatSummaryDto {
             long availableCount,
             long heldCount,
             long soldCount
-    ) {}
+    ) {
+        public static AdminSeatSummaryResponse of(
+                long eventId,
+                long availableCount,
+                long heldCount,
+                long soldCount
+        ) {
+            return new AdminSeatSummaryResponse(
+                    eventId,
+                    availableCount,
+                    heldCount,
+                    soldCount
+            );
+        }
+    }
 }

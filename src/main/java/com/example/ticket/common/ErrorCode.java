@@ -8,10 +8,12 @@ public enum ErrorCode {
     USER_BLOCKED(HttpStatus.FORBIDDEN, "User is blocked"),
 
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Event not found"),
+    EVENT_NOT_DRAFT(HttpStatus.CONFLICT, "Event not a draft"),
     EVENT_NOT_ON_SALE(HttpStatus.CONFLICT, "Event not on sale"),
     INVALID_SEAT_SET(HttpStatus.BAD_REQUEST, "Invalid seat set"),
     HOLD_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "Hold limit exceeded"),
     SEAT_NOT_AVAILABLE(HttpStatus.CONFLICT, "Seat not available"),
+    DUPLICATED_SEAT_IN_REQUEST(HttpStatus.CONFLICT, "duplicated seat information in request"),
     HOLD_EXPIRED(HttpStatus.CONFLICT, "Hold expired"),
     HOLD_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Hold token not found"),
 
