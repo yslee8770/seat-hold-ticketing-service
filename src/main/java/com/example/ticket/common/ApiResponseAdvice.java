@@ -39,19 +39,17 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
         if (body instanceof ResponseEntity<?> re) {
             Object inner = re.getBody();
             if (inner instanceof ApiResponse<?> || inner instanceof ApiErrorResponse) {
-                return body; // 이미 표준 포맷이면 그대로
+                return body;
             }
             return ResponseEntity.status(re.getStatusCode())
                     .headers(re.getHeaders())
                     .body(ApiResponse.of(inner, traceId()));
         }
 
-        // 이미 표준 포맷이면 그대로
         if (body instanceof ApiResponse<?> || body instanceof ApiErrorResponse) {
             return body;
         }
 
-        // 정상 응답은 전부 래핑
         return ApiResponse.of(body, traceId());
     }
 
