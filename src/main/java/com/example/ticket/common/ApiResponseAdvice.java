@@ -32,13 +32,10 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
             ServerHttpRequest req,
             ServerHttpResponse res
     ) {
-        // JSON이 아닌 응답은 건드리지 않음 (파일 다운로드/스트리밍 등)
         if (selectedContentType != null && !MediaType.APPLICATION_JSON.includes(selectedContentType)) {
             return body;
         }
 
-        // ResponseEntity를 직접 리턴하는 컨트롤러가 섞여 있으면, body만 감싸고 싶을 수 있음
-        // (보통은 컨트롤러에서 ResponseEntity를 쓰지 말고 DTO만 리턴하는 걸 추천)
         if (body instanceof ResponseEntity<?> re) {
             Object inner = re.getBody();
             if (inner instanceof ApiResponse<?> || inner instanceof ApiErrorResponse) {
