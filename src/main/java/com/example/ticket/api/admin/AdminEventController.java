@@ -2,7 +2,6 @@ package com.example.ticket.api.admin;
 
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventCreateRequest;
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventResponse;
-import com.example.ticket.common.ApiResponse;
 import com.example.ticket.service.AdminEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

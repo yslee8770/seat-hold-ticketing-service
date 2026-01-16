@@ -4,7 +4,6 @@ package com.example.ticket.api.admin;
 import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertRequest;
 import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertResponse;
 import com.example.ticket.api.admin.dto.AdminSeatSummaryDto.AdminSeatSummaryResponse;
-import com.example.ticket.common.ApiResponse;
 import com.example.ticket.service.AdminSeatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
