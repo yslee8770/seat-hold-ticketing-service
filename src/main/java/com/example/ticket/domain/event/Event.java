@@ -1,5 +1,7 @@
 package com.example.ticket.domain.event;
 
+import com.example.ticket.common.BusinessRuleViolationException;
+import com.example.ticket.common.ErrorCode;
 import com.example.ticket.domain.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -51,10 +53,16 @@ public class Event extends BaseTimeEntity {
     }
 
     public void open() {
+        if(status != EventStatus.DRAFT) {
+            throw new BusinessRuleViolationException(ErrorCode.EVENT_NOT_DRAFT);
+        }
         this.status = EventStatus.OPEN;
     }
 
     public void close() {
+        if(status != EventStatus.OPEN) {
+            throw new BusinessRuleViolationException(ErrorCode.EVENT_NOT_OPEN);
+        }
         this.status = EventStatus.CLOSED;
     }
 }

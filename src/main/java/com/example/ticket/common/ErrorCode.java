@@ -9,6 +9,7 @@ public enum ErrorCode {
 
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Event not found"),
     EVENT_NOT_DRAFT(HttpStatus.CONFLICT, "Event not a draft"),
+    EVENT_NOT_OPEN(HttpStatus.CONFLICT, "Event not a open"),
     EVENT_NOT_ON_SALE(HttpStatus.CONFLICT, "Event not on sale"),
     INVALID_SEAT_SET(HttpStatus.BAD_REQUEST, "Invalid seat set"),
     HOLD_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "Hold limit exceeded"),
