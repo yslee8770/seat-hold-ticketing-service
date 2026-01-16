@@ -56,7 +56,6 @@ public class Seat extends BaseTimeEntity {
     @Column(name = "hold_until")
     private Instant holdUntil;
 
-    @Version
     @Column(name = "version", nullable = false)
     private long version;
 
