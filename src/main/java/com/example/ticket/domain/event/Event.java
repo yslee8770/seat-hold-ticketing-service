@@ -50,6 +50,11 @@ public class Event extends BaseTimeEntity {
         return new Event(title, salesOpenAt, salesCloseAt, EventStatus.DRAFT);
     }
 
-    public void open() { this.status = EventStatus.OPEN; }
-    public void close() { this.status = EventStatus.CLOSED; }
+    public void open() {
+        this.status = EventStatus.OPEN;
+    }
+
+    public void close() {
+        this.status = EventStatus.CLOSED;
+    }
 }

@@ -44,16 +44,6 @@ public class AdminSeatService {
         return AdminSeatBulkUpsertResponse.of(eventId, seats.size());
     }
 
-    private void validateNoDuplicates(List<AdminSeatCreateDto> items) {
-        HashSet<String> seen = new HashSet<>(items.size() * 2);
-        for (AdminSeatCreateDto seatCreateDto : items) {
-            String key = seatCreateDto.zoneCode() + "#" + seatCreateDto.seatNo();
-            if (!seen.add(key)) {
-                throw new BusinessRuleViolationException(ErrorCode.DUPLICATED_SEAT_IN_REQUEST);
-            }
-        }
-    }
-
     @Transactional(readOnly = true)
     public AdminSeatSummaryResponse getSummary(long eventId) {
         eventRepository.findById(eventId)
@@ -69,5 +59,15 @@ public class AdminSeatService {
             else if (row.status() == SeatStatus.SOLD) sold = row.count();
         }
         return AdminSeatSummaryResponse.of(eventId, available, held, sold);
+    }
+
+    private void validateNoDuplicates(List<AdminSeatCreateDto> items) {
+        HashSet<String> seen = new HashSet<>(items.size() * 2);
+        for (AdminSeatCreateDto seatCreateDto : items) {
+            String key = seatCreateDto.zoneCode() + "#" + seatCreateDto.seatNo();
+            if (!seen.add(key)) {
+                throw new BusinessRuleViolationException(ErrorCode.DUPLICATED_SEAT_IN_REQUEST);
+            }
+        }
     }
 }
