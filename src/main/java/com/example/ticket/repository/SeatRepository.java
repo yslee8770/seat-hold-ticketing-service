@@ -23,4 +23,6 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
         group by s.status
     """)
     List<SeatStatusCount> countByStatus(@Param("eventId") long eventId);
+
+    List<Seat> findAllByEventIdOrderByZoneCodeAscSeatNoAsc(Long eventId);
 }

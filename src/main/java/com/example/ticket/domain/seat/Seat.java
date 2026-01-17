@@ -56,9 +56,6 @@ public class Seat extends BaseTimeEntity {
     @Column(name = "hold_until")
     private Instant holdUntil;
 
-    @Column(name = "version", nullable = false)
-    private long version;
-
     private Seat(Long eventId, String zoneCode, String seatNo, long price) {
         this.eventId = Objects.requireNonNull(eventId);
         this.zoneCode = Objects.requireNonNull(zoneCode);
