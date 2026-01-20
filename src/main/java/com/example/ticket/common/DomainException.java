@@ -18,9 +18,5 @@ public abstract class DomainException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
-    public ErrorCode getErrorCode() {
-        return errorCode;
-    }
-
 }
 
