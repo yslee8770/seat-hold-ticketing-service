@@ -4,7 +4,7 @@ import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertRequest;
 import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertResponse;
 import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatCreateDto;
 import com.example.ticket.api.admin.dto.AdminSeatSummaryDto.AdminSeatSummaryResponse;
-import com.example.ticket.common.BusinessRuleViolationException;
+import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.domain.event.Event;
 import com.example.ticket.domain.event.EventStatus;

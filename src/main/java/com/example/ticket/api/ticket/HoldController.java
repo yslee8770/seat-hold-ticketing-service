@@ -1,22 +1,21 @@
 package com.example.ticket.api.ticket;
 
 import com.example.ticket.api.ticket.dto.HoldDto.*;
+import com.example.ticket.service.HoldService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/events/{eventId}")
+@RequiredArgsConstructor
 public class HoldController {
 
     public static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
-    public static final String USER_ID_HEADER = "X-User-Id"; // 임시 인증(나중에 JWT로 교체)
+    public static final String USER_ID_HEADER = "X-User-Id";
 
-    // TODO: 너가 구현할 서비스/유스케이스 주입
-    // private final HoldService holdService;
+     private final HoldService holdService;
 
-    public HoldController() {
-        // this.holdService = holdService;
-    }
 
     /**
      * (3-1) HOLD 획득(결제하기 버튼)
@@ -33,8 +32,8 @@ public class HoldController {
             @RequestHeader(USER_ID_HEADER) long userId,
             @Valid @RequestBody HoldCreateRequest request
     ) {
-        // TODO:
-        // HoldCreateResponse res = holdService.hold(userId, eventId, request, idempotencyKey);
+
+         HoldCreateResponse res = holdService.hold(userId, eventId, request, idempotencyKey);
         throw new UnsupportedOperationException("Not implemented");
     }
 }

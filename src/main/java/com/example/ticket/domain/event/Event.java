@@ -1,6 +1,6 @@
 package com.example.ticket.domain.event;
 
-import com.example.ticket.common.BusinessRuleViolationException;
+import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.domain.BaseTimeEntity;
 import jakarta.persistence.*;

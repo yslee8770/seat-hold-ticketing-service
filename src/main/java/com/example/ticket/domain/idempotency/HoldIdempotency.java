@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -38,27 +39,31 @@ public class HoldIdempotency extends BaseTimeEntity {
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
+    @Column(name = "seat_count", nullable = false)
+    private Integer seatCount;
+
     @Column(name = "seat_ids_hash", nullable = false, length = 128)
     private String seatIdsHash;
 
     @Column(name = "hold_token", nullable = false, length = 64)
-    private String holdToken;
+    private UUID holdGroupId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     private HoldIdempotency(Long userId, String idempotencyKey, Long eventId, String seatIdsHash,
-                            String holdToken, Instant expiresAt) {
+                            UUID holdGroupId, Instant expiresAt, Integer seatCount) {
         this.userId = Objects.requireNonNull(userId);
         this.idempotencyKey = Objects.requireNonNull(idempotencyKey);
         this.eventId = Objects.requireNonNull(eventId);
         this.seatIdsHash = Objects.requireNonNull(seatIdsHash);
-        this.holdToken = Objects.requireNonNull(holdToken);
+        this.holdGroupId = Objects.requireNonNull(holdGroupId);
         this.expiresAt = Objects.requireNonNull(expiresAt);
+        this.seatCount = Objects.requireNonNull(seatCount);
     }
 
-    public static HoldIdempotency of(Long userId, String key, Long eventId, String seatIdsHash,
-                                     String holdToken, Instant expiresAt) {
-        return new HoldIdempotency(userId, key, eventId, seatIdsHash, holdToken, expiresAt);
+    public static HoldIdempotency create(Long userId, String key, Long eventId, String seatIdsHash,
+                                         UUID holdToken, Instant expiresAt, Integer seatCount) {
+        return new HoldIdempotency(userId, key, eventId, seatIdsHash, holdToken, expiresAt, seatCount);
     }
 }

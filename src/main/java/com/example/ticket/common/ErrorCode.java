@@ -18,6 +18,7 @@ public enum ErrorCode {
     HOLD_EXPIRED(HttpStatus.CONFLICT, "Hold expired"),
     HOLD_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Hold token not found"),
 
+
     PAYMENT_DECLINED(HttpStatus.CONFLICT, "Payment declined"),
     PAYMENT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "Payment timeout"),
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Idempotency conflict"),
@@ -25,7 +26,9 @@ public enum ErrorCode {
     INVALID_EVENT_SALES_WINDOW(HttpStatus.BAD_REQUEST, "Invalid sales window"),
 
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Validation failed"),
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal error");
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal error"),
+
+    IDEMPOTENCY_IN_PROGRESS(HttpStatus.CONFLICT,  "Request is in progress");
 
     private final HttpStatus status;
     private final String defaultMessage;

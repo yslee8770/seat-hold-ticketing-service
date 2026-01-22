@@ -1,5 +1,6 @@
-package com.example.ticket.common;
+package com.example.ticket.common.exception;
 
+import com.example.ticket.common.ErrorCode;
 import lombok.Getter;
 
 @Getter

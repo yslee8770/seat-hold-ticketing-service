@@ -2,7 +2,7 @@ package com.example.ticket.service;
 
 import com.example.ticket.api.admin.dto.AdminSeatDto.*;
 import com.example.ticket.api.admin.dto.AdminSeatSummaryDto.*;
-import com.example.ticket.common.BusinessRuleViolationException;
+import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.domain.event.Event;
 import com.example.ticket.domain.event.EventStatus;

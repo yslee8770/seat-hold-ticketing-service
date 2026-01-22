@@ -1,4 +1,6 @@
-package com.example.ticket.common;
+package com.example.ticket.common.exception;
+
+import com.example.ticket.common.ErrorCode;
 
 public class BusinessRuleViolationException extends DomainException {
 
