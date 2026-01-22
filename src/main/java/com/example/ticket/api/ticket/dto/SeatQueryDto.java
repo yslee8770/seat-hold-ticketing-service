@@ -5,7 +5,6 @@ import com.example.ticket.domain.seat.Seat;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -16,10 +15,10 @@ public final class SeatQueryDto {
             List<SeatDto> seats
     ) {
         public static SeatListResponse from(long eventId, List<Seat> seats) {
-            List<SeatDto> seatDtos = seats.stream()
+            List<SeatDto> seatDto = seats.stream()
                     .map(SeatDto::from)
                     .toList();
-            return new SeatListResponse(eventId, seatDtos);
+            return new SeatListResponse(eventId, seatDto);
         }
     }
 

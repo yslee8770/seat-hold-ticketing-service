@@ -11,14 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/events/{eventId}")
 @RequiredArgsConstructor
-public class SeatQueryController {
+public class SeatController {
 
     private final SeatService seatService;
 
     /**
      * 좌석 목록 조회 ( 읽기 전용)
      * GET /api/events/{eventId}/seats
-     *
      */
     @GetMapping("/seats")
     public SeatListResponse getSeats(@PathVariable long eventId) {
