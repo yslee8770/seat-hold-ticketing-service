@@ -14,7 +14,7 @@ public class HoldController {
     public static final String IDEMPOTENCY_KEY_HEADER = "Idempotency-Key";
     public static final String USER_ID_HEADER = "X-User-Id";
 
-     private final HoldService holdService;
+    private final HoldService holdService;
 
 
     /**
@@ -22,8 +22,8 @@ public class HoldController {
      * POST /api/events/{eventId}/holds
      *
      * Headers:
-     *  - Idempotency-Key (required)
-     *  - X-User-Id (temporary, until auth is implemented)
+     * - Idempotency-Key (required)
+     * - X-User-Id (temporary, until auth is implemented)
      */
     @PostMapping("/holds")
     public HoldCreateResponse createHold(
@@ -33,7 +33,6 @@ public class HoldController {
             @Valid @RequestBody HoldCreateRequest request
     ) {
 
-         HoldCreateResponse res = holdService.hold(userId, eventId, request, idempotencyKey);
-        throw new UnsupportedOperationException("Not implemented");
+        return holdService.hold(userId, eventId, request, idempotencyKey);
     }
 }

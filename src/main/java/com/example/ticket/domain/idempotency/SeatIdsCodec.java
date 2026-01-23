@@ -1,5 +1,8 @@
 package com.example.ticket.domain.idempotency;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -7,19 +10,22 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class SeatIdsCodec {
 
     private static final HexFormat HEX = HexFormat.of();
 
-    private SeatIdsCodec() {}
-
-    /** 중복 제거 + 오름차순 정렬 */
+    /**
+     * 중복 제거 + 오름차순 정렬
+     */
     public static List<Long> normalize(List<Long> seatIds) {
         Objects.requireNonNull(seatIds, "seatIds");
         return seatIds.stream().distinct().sorted().toList();
     }
 
-    /** canonical string: "12,35,90" (항상 동일 입력이면 동일 문자열) */
+    /**
+     * canonical string: "12,35,90" (항상 동일 입력이면 동일 문자열)
+     */
     public static String toCanonicalString(List<Long> seatIds) {
         List<Long> normalized = normalize(seatIds);
 
@@ -31,7 +37,9 @@ public final class SeatIdsCodec {
         return sb.toString();
     }
 
-    /** sha256 hex of canonical string */
+    /**
+     * sha256 hex of canonical string
+     */
     public static String sha256HexOfCanonical(List<Long> seatIds) {
         String canonical = toCanonicalString(seatIds);
         return sha256Hex(canonical);

@@ -15,7 +15,7 @@ import java.util.UUID;
 @Table(
         name = "hold_idempotencies",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_hold_idempotencies_user_key", columnNames = {"user_id", "idempotency_key"})
+                @UniqueConstraint(name = "uk_hold_idempotencies_user_key", columnNames = {"user_id", "event_id", "idempotency_key"})
         },
         indexes = {
                 @Index(name = "ix_hold_idempotencies_user", columnList = "user_id")
@@ -42,21 +42,21 @@ public class HoldIdempotency extends BaseTimeEntity {
     @Column(name = "seat_count", nullable = false)
     private Integer seatCount;
 
-    @Column(name = "seat_ids_hash", nullable = false, length = 128)
-    private String seatIdsHash;
+    @Column(name = "seat_ids_key", nullable = false, length = 128)
+    private String seatIdsKey;
 
-    @Column(name = "hold_token", nullable = false, length = 64)
+    @Column(name = "hold_group_id", nullable = false, length = 64)
     private UUID holdGroupId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    private HoldIdempotency(Long userId, String idempotencyKey, Long eventId, String seatIdsHash,
+    private HoldIdempotency(Long userId, String idempotencyKey, Long eventId, String seatIdsKey,
                             UUID holdGroupId, Instant expiresAt, Integer seatCount) {
         this.userId = Objects.requireNonNull(userId);
         this.idempotencyKey = Objects.requireNonNull(idempotencyKey);
         this.eventId = Objects.requireNonNull(eventId);
-        this.seatIdsHash = Objects.requireNonNull(seatIdsHash);
+        this.seatIdsKey = Objects.requireNonNull(seatIdsKey);
         this.holdGroupId = Objects.requireNonNull(holdGroupId);
         this.expiresAt = Objects.requireNonNull(expiresAt);
         this.seatCount = Objects.requireNonNull(seatCount);
