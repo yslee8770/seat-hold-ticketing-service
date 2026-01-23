@@ -22,27 +22,21 @@ import java.util.Objects;
 public class HoldGroup extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "hold_group_id", nullable = false)
-    private java.util.UUID id;
-
-    @Column(name = "event_id", nullable = false)
-    private Long eventId;
+    private Long id;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
 
-    private HoldGroup(Long eventId, Long userId, Instant expiresAt) {
-        this.eventId = Objects.requireNonNull(eventId);
-        this.userId = Objects.requireNonNull(userId);
-        this.expiresAt = Objects.requireNonNull(expiresAt);
+    private HoldGroup(Long userId) {
+        this.userId = userId;
     }
 
-    public static HoldGroup create(Long eventId, Long userId, Instant expiresAt) {
-        return new HoldGroup(eventId, userId, expiresAt);
+
+    public static HoldGroup create(Long userId) {
+        return new HoldGroup(userId);
     }
 
 }

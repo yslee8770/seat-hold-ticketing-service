@@ -46,13 +46,13 @@ public class HoldIdempotency extends BaseTimeEntity {
     private String seatIdsKey;
 
     @Column(name = "hold_group_id", nullable = false, length = 64)
-    private UUID holdGroupId;
+    private Long holdGroupId;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
     private HoldIdempotency(Long userId, String idempotencyKey, Long eventId, String seatIdsKey,
-                            UUID holdGroupId, Instant expiresAt, Integer seatCount) {
+                            Long holdGroupId, Instant expiresAt, Integer seatCount) {
         this.userId = Objects.requireNonNull(userId);
         this.idempotencyKey = Objects.requireNonNull(idempotencyKey);
         this.eventId = Objects.requireNonNull(eventId);
@@ -63,7 +63,7 @@ public class HoldIdempotency extends BaseTimeEntity {
     }
 
     public static HoldIdempotency create(Long userId, String key, Long eventId, String seatIdsHash,
-                                         UUID holdToken, Instant expiresAt, Integer seatCount) {
+                                         Long holdToken, Instant expiresAt, Integer seatCount) {
         return new HoldIdempotency(userId, key, eventId, seatIdsHash, holdToken, expiresAt, seatCount);
     }
 }

@@ -50,20 +50,12 @@ public class Seat extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 16)
     private SeatStatus status;
 
-    @Column(name = "held_by_user_id")
-    private Long heldByUserId;
-
-    @Column(name = "hold_until")
-    private Instant holdUntil;
-
     private Seat(Long eventId, String zoneCode, String seatNo, long price) {
         this.eventId = Objects.requireNonNull(eventId);
         this.zoneCode = Objects.requireNonNull(zoneCode);
         this.seatNo = Objects.requireNonNull(seatNo);
         this.price = price;
         this.status = SeatStatus.AVAILABLE;
-        this.heldByUserId = null;
-        this.holdUntil = null;
     }
 
     public static Seat create(Long eventId, String zoneCode, String seatNo, long price) {

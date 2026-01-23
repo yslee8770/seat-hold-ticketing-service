@@ -29,16 +29,4 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     List<SeatStatusCount> countByStatus(@Param("eventId") long eventId);
 
     List<Seat> findAllByEventIdOrderByZoneCodeAscSeatNoAsc(Long eventId);
-
-    @Modifying
-    @Query("""
-    update Seat s
-       set s.status = com.example.ticket.domain.event.SeatStatus.HELD,
-           s.heldByUserId = :userId,
-           s.holdUntil = :holdUntil
-     where s.eventId = :eventId
-       and s.id in :seatIds
-       and s.status = com.example.ticket.domain.event.SeatStatus.AVAILABLE
-""")
-    int holdIfAllAvailable(long eventId, List<Long> seatIds, long userId, Instant holdUntil);
 }
