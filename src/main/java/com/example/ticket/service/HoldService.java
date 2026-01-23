@@ -42,7 +42,7 @@ public class HoldService {
 
         HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId));
         Instant expiresAt = HoldTimes.holdUntil(clock);
-        List<Long> seatIds = SeatIdsCodec.normalize(request.seatIds());
+        List<Long> seatIds = getNormalizedSeatIds(request.seatIds());
         if (seatIds.isEmpty()) {
             throw new BusinessRuleViolationException(ErrorCode.INVALID_SEAT_SET);
         }
@@ -114,5 +114,14 @@ public class HoldService {
             cur = cur.getCause();
         }
         return false;
+    }
+
+
+    private List<Long> getNormalizedSeatIds(List<Long> seatIds) {
+        List<Long> normalized =SeatIdsCodec.normalize(seatIds);
+        if (normalized.isEmpty()) {
+            throw new BusinessRuleViolationException(ErrorCode.INVALID_SEAT_SET);
+        }
+        return normalized;
     }
 }
