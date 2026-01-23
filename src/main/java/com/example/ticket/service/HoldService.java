@@ -43,9 +43,6 @@ public class HoldService {
         HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId));
         Instant expiresAt = HoldTimes.holdUntil(clock);
         List<Long> seatIds = getNormalizedSeatIds(request.seatIds());
-        if (seatIds.isEmpty()) {
-            throw new BusinessRuleViolationException(ErrorCode.INVALID_SEAT_SET);
-        }
 
         int savedHoldGroupSeatsCount = createHoldSeats(eventId, seatIds, expiresAt, holdGroup);
         return HoldCreateResponse.from(
