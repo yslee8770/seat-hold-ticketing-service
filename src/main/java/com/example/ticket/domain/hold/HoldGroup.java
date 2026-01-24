@@ -29,6 +29,7 @@ public class HoldGroup extends BaseTimeEntity {
 
     private HoldGroup(Long userId, Instant expiresAt) {
         this.userId = userId;
+        this.expiresAt = expiresAt;
     }
 
     public static HoldGroup create(Long userId, Instant expiresAt) {
