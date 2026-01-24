@@ -22,10 +22,10 @@ public final class HoldDto {
 
     public record HoldCreateResponse(
             long eventId,
-            UUID holdToken,
+            Long holdToken,
             int seatCount
     ) {
-        public static HoldCreateResponse from(long eventId, UUID holdToken, int seatCount) {
+        public static HoldCreateResponse from(long eventId, Long holdToken, int seatCount) {
             return new HoldCreateResponse(eventId, holdToken, seatCount);
         }
 

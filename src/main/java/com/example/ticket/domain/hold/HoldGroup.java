@@ -11,11 +11,7 @@ import java.util.Objects;
 
 @Entity
 @Table(
-        name = "hold_groups",
-        indexes = {
-                @Index(name = "ix_hold_groups_user_event", columnList = "user_id, event_id"),
-                @Index(name = "ix_hold_groups_expires_at", columnList = "expires_at")
-        }
+        name = "hold_groups"
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
