@@ -6,6 +6,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Entity
 @Table(
         name = "hold_groups"
@@ -22,14 +24,15 @@ public class HoldGroup extends BaseTimeEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "expires_at", nullable = false)
+    private Instant expiresAt;
 
-    private HoldGroup(Long userId) {
+    private HoldGroup(Long userId, Instant expiresAt) {
         this.userId = userId;
     }
 
-
-    public static HoldGroup create(Long userId) {
-        return new HoldGroup(userId);
+    public static HoldGroup create(Long userId, Instant expiresAt) {
+        return new HoldGroup(userId, expiresAt);
     }
 
 }

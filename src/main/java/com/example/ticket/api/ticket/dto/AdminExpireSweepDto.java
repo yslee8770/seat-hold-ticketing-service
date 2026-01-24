@@ -11,5 +11,12 @@ public final class AdminExpireSweepDto {
     public record AdminExpireSweepResponse(
             int expiredReleasedCount,
             Instant sweptAt
-    ) {}
+    ) {
+        public static AdminExpireSweepResponse from(
+                int expiredReleasedCount,
+                Instant sweptAt
+        ) {
+            return new AdminExpireSweepResponse(expiredReleasedCount, sweptAt);
+        }
+    }
 }

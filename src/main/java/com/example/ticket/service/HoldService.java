@@ -43,8 +43,8 @@ public class HoldService {
             return HoldCreateResponse.from(idempotency.get());
         }
 
-        HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId));
         Instant expiresAt = HoldTimes.holdUntil(clock);
+        HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId, expiresAt));
         List<Long> seatIds = getNormalizedSeatIds(request.seatIds());
 
         int savedHoldGroupSeatsCount = createHoldSeats(eventId, seatIds, expiresAt, holdGroup);
@@ -118,7 +118,7 @@ public class HoldService {
 
 
     private List<Long> getNormalizedSeatIds(List<Long> seatIds) {
-        List<Long> normalized =SeatIdsCodec.normalize(seatIds);
+        List<Long> normalized = SeatIdsCodec.normalize(seatIds);
         if (normalized.isEmpty()) {
             throw new BusinessRuleViolationException(ErrorCode.INVALID_SEAT_SET);
         }
