@@ -2,8 +2,8 @@ package com.example.ticket.service;
 
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventCreateRequest;
 import com.example.ticket.api.admin.dto.AdminEventDto.AdminEventResponse;
-import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.common.ErrorCode;
+import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.domain.event.Event;
 import com.example.ticket.repository.EventRepository;
 import lombok.RequiredArgsConstructor;

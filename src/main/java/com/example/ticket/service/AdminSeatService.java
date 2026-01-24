@@ -1,9 +1,11 @@
 package com.example.ticket.service;
 
-import com.example.ticket.api.admin.dto.AdminSeatDto.*;
-import com.example.ticket.api.admin.dto.AdminSeatSummaryDto.*;
-import com.example.ticket.common.exception.BusinessRuleViolationException;
+import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertRequest;
+import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatBulkUpsertResponse;
+import com.example.ticket.api.admin.dto.AdminSeatDto.AdminSeatCreateDto;
+import com.example.ticket.api.admin.dto.AdminSeatSummaryDto.AdminSeatSummaryResponse;
 import com.example.ticket.common.ErrorCode;
+import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.domain.event.Event;
 import com.example.ticket.domain.event.EventStatus;
 import com.example.ticket.domain.event.SeatStatus;
@@ -50,15 +52,13 @@ public class AdminSeatService {
                 .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.EVENT_NOT_FOUND));
 
         long available = 0L;
-        long held = 0L;
         long sold = 0L;
 
         for (SeatStatusCount row : seatRepository.countByStatus(eventId)) {
             if (row.status() == SeatStatus.AVAILABLE) available = row.count();
-            else if (row.status() == SeatStatus.HELD) held = row.count();
             else if (row.status() == SeatStatus.SOLD) sold = row.count();
         }
-        return AdminSeatSummaryResponse.of(eventId, available, held, sold);
+        return AdminSeatSummaryResponse.of(eventId, available, sold);
     }
 
     private void validateNoDuplicates(List<AdminSeatCreateDto> items) {

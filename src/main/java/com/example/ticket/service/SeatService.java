@@ -1,6 +1,6 @@
 package com.example.ticket.service;
 
-import com.example.ticket.api.ticket.dto.SeatQueryDto.*;
+import com.example.ticket.api.ticket.dto.SeatQueryDto.SeatListResponse;
 import com.example.ticket.domain.seat.Seat;
 import com.example.ticket.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;

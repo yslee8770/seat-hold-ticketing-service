@@ -1,6 +1,7 @@
 package com.example.ticket.service;
 
-import com.example.ticket.api.ticket.dto.HoldDto.*;
+import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateRequest;
+import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateResponse;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.domain.hold.HoldGroup;
@@ -8,7 +9,9 @@ import com.example.ticket.domain.hold.HoldGroupSeat;
 import com.example.ticket.domain.hold.HoldTimes;
 import com.example.ticket.domain.idempotency.HoldIdempotency;
 import com.example.ticket.domain.idempotency.SeatIdsCodec;
-import com.example.ticket.repository.*;
+import com.example.ticket.repository.HoldGroupRepository;
+import com.example.ticket.repository.HoldGroupSeatRepository;
+import com.example.ticket.repository.HoldIdempotencyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

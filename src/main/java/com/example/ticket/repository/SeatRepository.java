@@ -1,17 +1,12 @@
 package com.example.ticket.repository;
 
-import com.example.ticket.domain.event.Event;
-import com.example.ticket.domain.event.SeatStatus;
 import com.example.ticket.domain.seat.Seat;
 import com.example.ticket.repository.dto.SeatStatusCount;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Size;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
 import java.util.List;
 
 public interface SeatRepository extends JpaRepository<Seat, Long> {

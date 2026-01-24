@@ -1,6 +1,6 @@
 package com.example.ticket.api.ticket;
 
-import com.example.ticket.api.ticket.dto.SeatQueryDto.*;
+import com.example.ticket.api.ticket.dto.SeatQueryDto.SeatListResponse;
 import com.example.ticket.service.SeatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

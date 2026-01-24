@@ -1,6 +1,7 @@
 package com.example.ticket.api.ticket;
 
-import com.example.ticket.api.ticket.dto.HoldDto.*;
+import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateRequest;
+import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateResponse;
 import com.example.ticket.service.HoldService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
