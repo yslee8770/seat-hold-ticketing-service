@@ -20,6 +20,19 @@ public final class AdminPaymentDto {
             @NotNull PaymentStatus status,      // APPROVED | DECLINED | TIMEOUT
             Instant decidedAt            // null이면 서버 now
     ) {
+        public AdminPaymentDecideRequest (
+                String paymentTxId,
+                Long userId,
+                long amount,
+                PaymentStatus status,
+                Instant decidedAt
+        ){
+          this.paymentTxId = paymentTxId;
+          this.userId = userId;
+          this.amount = amount;
+          this.status = status;
+          this.decidedAt = decidedAt;
+        }
     }
 
     public record AdminPaymentResponse(
