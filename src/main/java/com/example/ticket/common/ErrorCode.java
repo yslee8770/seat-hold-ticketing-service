@@ -19,6 +19,7 @@ public enum ErrorCode {
     HOLD_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Hold token not found"),
 
 
+    PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Payment idempotency conflict"),
     PAYMENT_DECLINED(HttpStatus.CONFLICT, "Payment declined"),
     PAYMENT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "Payment timeout"),
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Idempotency conflict"),

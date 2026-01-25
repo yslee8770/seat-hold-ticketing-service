@@ -47,7 +47,7 @@ public class PaymentTx extends BaseTimeEntity {
         this.decidedAt = decidedAt;
     }
 
-    public static PaymentTx decided(String paymentTxId, Long userId, long amount, PaymentStatus status, Instant decidedAt) {
+    public static PaymentTx create(String paymentTxId, Long userId, long amount, PaymentStatus status, Instant decidedAt) {
         return new PaymentTx(paymentTxId, userId, amount, status, decidedAt);
     }
 }
