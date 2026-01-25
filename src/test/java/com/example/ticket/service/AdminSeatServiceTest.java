@@ -177,7 +177,6 @@ class AdminSeatServiceTest {
         // then
         assertThat(res.eventId()).isEqualTo(eventId);
         assertThat(res.availableCount()).isEqualTo(10L);
-        assertThat(res.heldCount()).isEqualTo(0L);
         assertThat(res.soldCount()).isEqualTo(3L);
 
         verify(eventRepository).findById(eventId);

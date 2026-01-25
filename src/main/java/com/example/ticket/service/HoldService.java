@@ -37,7 +37,7 @@ public class HoldService {
 
         Optional<HoldIdempotency> idempotency = holdIdempotencyRepository.findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey);
         if (idempotency.isPresent()) {
-            if (!idempotency.get().getEventId().equals(eventId) || !idempotency.get().getSeatIdsKey().equals(seatIdsKey)) {
+            if (!idempotency.get().getSeatIdsKey().equals(seatIdsKey)) {
                 throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
             }
             return HoldCreateResponse.from(idempotency.get());
