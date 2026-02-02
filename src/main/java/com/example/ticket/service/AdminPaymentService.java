@@ -1,4 +1,4 @@
-package com.example.ticket.api.admin;
+package com.example.ticket.service;
 
 import com.example.ticket.api.admin.dto.AdminPaymentDto.*;
 import com.example.ticket.common.ErrorCode;

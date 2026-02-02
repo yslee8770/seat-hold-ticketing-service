@@ -2,6 +2,7 @@ package com.example.ticket.api.admin;
 
 
 import com.example.ticket.api.admin.dto.AdminPaymentDto.*;
+import com.example.ticket.service.AdminPaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

@@ -40,24 +40,24 @@ public class ConfirmIdempotency extends BaseTimeEntity {
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
-    @Column(name = "hold_token", nullable = false, length = 64)
-    private String holdToken;
+    @Column(name = "hold_group_id", nullable = false, length = 64)
+    private Long holdGroupId;
 
     @Column(name = "booking_id", nullable = false)
     private Long bookingId;
 
     private ConfirmIdempotency(String paymentTxId, Long userId, String confirmKey,
-                               Long eventId, String holdToken, Long bookingId) {
+                               Long eventId, Long holdGroupId, Long bookingId) {
         this.paymentTxId = Objects.requireNonNull(paymentTxId);
         this.userId = Objects.requireNonNull(userId);
         this.confirmKey = Objects.requireNonNull(confirmKey);
         this.eventId = Objects.requireNonNull(eventId);
-        this.holdToken = Objects.requireNonNull(holdToken);
+        this.holdGroupId = Objects.requireNonNull(holdGroupId);
         this.bookingId = Objects.requireNonNull(bookingId);
     }
 
-    public static ConfirmIdempotency of(String paymentTxId, Long userId, String confirmKey,
-                                        Long eventId, String holdToken, Long bookingId) {
+    public static ConfirmIdempotency create(String paymentTxId, Long userId, String confirmKey,
+                                        Long eventId, Long holdToken, Long bookingId) {
         return new ConfirmIdempotency(paymentTxId, userId, confirmKey, eventId, holdToken, bookingId);
     }
 }

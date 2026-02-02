@@ -17,8 +17,11 @@ public enum ErrorCode {
     DUPLICATED_SEAT_IN_REQUEST(HttpStatus.CONFLICT, "duplicated seat information in request"),
     HOLD_EXPIRED(HttpStatus.CONFLICT, "Hold expired"),
     HOLD_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Hold token not found"),
+    BOOKING_ALREADY_SAVED(HttpStatus.CONFLICT, "booking already saved"),
+    BOOKING_ITEM_ALREADY_SAVED(HttpStatus.CONFLICT, "booking item already saved"),
 
 
+    CONFIRM_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "confirm idempotency conflict"),
     PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Payment idempotency conflict"),
     PAYMENT_DECLINED(HttpStatus.CONFLICT, "Payment declined"),
     PAYMENT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "Payment timeout"),

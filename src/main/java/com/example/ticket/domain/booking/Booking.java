@@ -47,7 +47,7 @@ public class Booking extends BaseTimeEntity {
         this.status = BookingStatus.CONFIRMED;
     }
 
-    public static Booking confirmed(Long eventId, Long userId, String paymentTxId) {
+    public static Booking create(Long eventId, Long userId, String paymentTxId) {
         return new Booking(eventId, userId, paymentTxId);
     }
 }

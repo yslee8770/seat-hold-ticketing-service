@@ -41,7 +41,7 @@ public class BookingItem {
         this.price = price;
     }
 
-    public static BookingItem of(Long bookingId, Long seatId, long price) {
+    public static BookingItem create(Long bookingId, Long seatId, long price) {
         return new BookingItem(bookingId, seatId, price);
     }
 }
