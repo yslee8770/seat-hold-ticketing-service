@@ -19,6 +19,8 @@ public enum ErrorCode {
     HOLD_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "Hold token not found"),
     BOOKING_ALREADY_SAVED(HttpStatus.CONFLICT, "booking already saved"),
     BOOKING_ITEM_ALREADY_SAVED(HttpStatus.CONFLICT, "booking item already saved"),
+    BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "booking not found"),
+    USER_NOT_MATCHED(HttpStatus.CONFLICT, "booking userId is not equals with userid"),
 
 
     CONFIRM_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "confirm idempotency conflict"),
