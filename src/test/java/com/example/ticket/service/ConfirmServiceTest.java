@@ -1,11 +1,15 @@
 package com.example.ticket.service;
 
 import com.example.ticket.api.ticket.dto.ConfirmDto.ConfirmRequest;
+import com.example.ticket.api.ticket.dto.ConfirmDto.ConfirmResponse;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.domain.booking.Booking;
 import com.example.ticket.domain.booking.BookingItem;
+import com.example.ticket.domain.event.Event;
+import com.example.ticket.domain.event.EventStatus;
 import com.example.ticket.domain.hold.HoldGroup;
+import com.example.ticket.domain.hold.HoldTimes;
 import com.example.ticket.domain.idempotency.ConfirmIdempotency;
 import com.example.ticket.domain.payment.PaymentStatus;
 import com.example.ticket.domain.payment.PaymentTx;
@@ -15,7 +19,8 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -26,38 +31,32 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ConfirmServiceTest {
 
-    @Mock
-    ConfirmIdempotencyRepository confirmIdempotencyRepository;
-    @Mock
-    PaymentRepository paymentRepository;
-    @Mock
-    BookingItemRepository bookingItemRepository;
-    @Mock
-    BookingRepository bookingRepository;
-    @Mock
-    HoldGroupRepository holdGroupRepository;
-    @Mock
-    HoldGroupSeatRepository holdGroupSeatRepository;
-    @Mock
-    SeatRepository seatRepository;
+    private static final String UK_CONFIRM_PAYMENT_TX = "uk_confirm_idempotencies_payment_tx";
+    private static final String UK_CONFIRM_USER_KEY   = "uk_confirm_idempotencies_user_key";
+    private static final String UK_BOOKINGS_PAYMENT_TX = "uk_bookings_payment_tx";
+    private static final String UK_BOOKING_ITEMS_SEAT  = "uk_booking_items_seat";
 
-    Clock clock;
+    @Mock ConfirmIdempotencyRepository confirmIdempotencyRepository;
+    @Mock PaymentRepository paymentRepository;
+    @Mock BookingItemRepository bookingItemRepository;
+    @Mock BookingRepository bookingRepository;
+    @Mock HoldGroupRepository holdGroupRepository;
+    @Mock HoldGroupSeatRepository holdGroupSeatRepository;
+    @Mock SeatRepository seatRepository;
+    @Mock EventRepository eventRepository;
 
-    @InjectMocks
-    ConfirmService confirmService;
+    private ConfirmService confirmService;
+    private Clock clock;
 
     @BeforeEach
     void setUp() {
-        Instant fixed = Instant.parse("2026-02-02T00:00:00Z");
-        this.clock = Clock.fixed(fixed, ZoneOffset.UTC);
-
+        clock = Clock.fixed(Instant.parse("2026-01-25T00:00:00Z"), ZoneOffset.UTC);
         confirmService = new ConfirmService(
                 confirmIdempotencyRepository,
                 paymentRepository,
@@ -66,301 +65,432 @@ class ConfirmServiceTest {
                 holdGroupRepository,
                 holdGroupSeatRepository,
                 seatRepository,
-                clock
+                clock,
+                eventRepository
         );
     }
 
+
+    private void stubEventOnSale(long eventId, Instant now) {
+        Event event = mock(Event.class);
+        when(event.getStatus()).thenReturn(EventStatus.OPEN);
+        when(event.getSalesOpenAt()).thenReturn(now.minusSeconds(1));
+        when(event.getSalesCloseAt()).thenReturn(now.plusSeconds(60));
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+    }
+
+    private void stubPayment(String paymentTxId, long amount, PaymentStatus status) {
+        PaymentTx payment = mock(PaymentTx.class);
+        when(payment.getAmount()).thenReturn(amount);
+        when(payment.getStatus()).thenReturn(status);
+        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
+    }
+
+    private static DataIntegrityViolationException dataIntegrity(String constraintName) {
+        ConstraintViolationException cve =
+                new ConstraintViolationException("constraint violated", new SQLException("dup"), constraintName);
+        return new DataIntegrityViolationException("DIE", cve);
+    }
+
+
     @Test
-    void confirm_idempotency_hit_sameDecision_returns_existing_response() {
+    void confirm_whenIdempotencyExists_sameDecision_returnsSameResponse_withoutSideEffects() {
         long userId = 1L;
         long eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        String confirmKey = "confirm-key-1";
-        long amount = 1000L;
 
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, confirmKey, amount);
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        String paymentTxId = "p1";
+        long amount = 1000L;
+        long holdGroupId = 55L;
+        String confirmKey = "ck1";
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
 
         ConfirmIdempotency idem = ConfirmIdempotency.create(
-                paymentTxId, userId, confirmKey, eventId, holdGroupId, 777L
+                paymentTxId, userId, confirmKey, eventId, holdGroupId, 999L
         );
-        PaymentTx payment = PaymentTx.create(paymentTxId, userId, amount, PaymentStatus.APPROVED, Instant.now(clock));
 
-        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.of(idem));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
-        when(bookingItemRepository.findAllByBookingId(777L))
-                .thenReturn(List.of(BookingItem.create(777L, 1L, 500L), BookingItem.create(777L, 2L, 500L)));
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId))
+                .thenReturn(Optional.of(idem));
 
-        var res = confirmService.confirm(userId, eventId, req);
+        stubPayment(paymentTxId, amount, PaymentStatus.APPROVED);
 
-        assertThat(res.bookingId()).isEqualTo(777L);
-        assertThat(res.eventId()).isEqualTo(eventId);
-        assertThat(res.userId()).isEqualTo(userId);
-        assertThat(res.paymentTxId()).isEqualTo(paymentTxId);
-        assertThat(res.totalAmount()).isEqualTo(amount);
-        assertThat(res.items()).hasSize(2);
+        BookingItem bi1 = BookingItem.create(999L, 1L, 500L);
+        BookingItem bi2 = BookingItem.create(999L, 2L, 500L);
+        when(bookingItemRepository.findAllByBookingId(999L)).thenReturn(List.of(bi1, bi2));
 
-        verify(holdGroupRepository, never()).findValidHoldGroup(anyLong(), anyLong(), any());
+        ConfirmResponse res = confirmService.confirm(userId, eventId, req);
+
+        assertEquals(eventId, res.eventId());
+        assertEquals(paymentTxId, res.paymentTxId());
+        assertEquals(PaymentStatus.APPROVED, res.status());
+        assertEquals(amount, res.totalAmount());
+        assertEquals(2, res.items().size());
+
+        verify(bookingRepository, never()).save(any());
+        verify(bookingItemRepository, never()).saveAll(any());
         verify(seatRepository, never()).changeSeatsSoldByHold(anyLong(), anyLong(), anyLong(), any(), anyList());
+        verify(holdGroupSeatRepository, never()).deleteHoldGroupSeats(anyLong(), anyLong());
+        verify(holdGroupRepository, never()).delete(any());
+        verify(confirmIdempotencyRepository, never()).save(any());
+    }
+
+    @Test
+    void confirm_whenIdempotencyExists_butDifferentDecision_throwsIdempotencyConflict() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+        long amount = 1000L;
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
+
+        ConfirmIdempotency existing = ConfirmIdempotency.create(
+                paymentTxId, userId, confirmKey, eventId, 999L, 999L
+        );
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId))
+                .thenReturn(Optional.of(existing));
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.CONFIRM_IDEMPOTENCY_CONFLICT, ex.getErrorCode());
+
+        verify(paymentRepository, never()).getPaymentTxById(anyString());
+        verify(confirmIdempotencyRepository, never()).save(any());
+    }
+
+    @Test
+    void confirm_whenPaymentDeclined_throwsPaymentDeclined() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+        long amount = 1000L;
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
+
+        stubPaymentDeclined(paymentTxId);
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.PAYMENT_DECLINED, ex.getErrorCode());
+
+        verify(paymentRepository).getPaymentTxById(paymentTxId);
+    }
+
+
+    @Test
+    void confirm_whenAmountMismatch_throwsAmountMismatch() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, 999L);
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
+
+        stubPayment(paymentTxId, 1000L, PaymentStatus.APPROVED);
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.AMOUNT_MISMATCH, ex.getErrorCode());
+    }
+
+    @Test
+    void confirm_whenHoldTokenNotFound_throwsHoldTokenNotFound() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+        long amount = 1000L;
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
+
+        stubPayment(paymentTxId, amount, PaymentStatus.APPROVED);
+
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.empty());
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.HOLD_TOKEN_NOT_FOUND, ex.getErrorCode());
+
+        verify(holdGroupSeatRepository, never()).findValidSeatIds(anyLong(), anyLong(), any());
+        verify(seatRepository, never()).changeSeatsSoldByHold(anyLong(), anyLong(), anyLong(), any(), anyList());
+    }
+
+    @Test
+    void confirm_whenHoldExpired_byNoValidSeats_throwsHoldExpired() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+        long amount = 1000L;
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
+
+        PaymentTx payment = paymentWith(amount, PaymentStatus.APPROVED);
+        stubPaymentRepoReturns(paymentTxId, payment);
+
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now))
+                .thenReturn(Optional.of(mock(HoldGroup.class)));
+
+        when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(List.of());
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.HOLD_EXPIRED, ex.getErrorCode());
+
+        verify(seatRepository, never()).changeSeatsSoldByHold(anyLong(), anyLong(), anyLong(), any(), anyList());
+    }
+
+    @Test
+    void confirm_whenHoldExpired_byUpdateCountMismatch_throwsHoldExpired() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        long holdGroupId = 55L;
+        String paymentTxId = "p1";
+        String confirmKey = "ck1";
+        long amount = 1000L;
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
+
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
+
+        stubPayment(paymentTxId, amount, PaymentStatus.APPROVED);
+
+        HoldGroup hg = mock(HoldGroup.class);
+        when(hg.getId()).thenReturn(holdGroupId);
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.of(hg));
+
+        List<Long> seatIds = List.of(1L, 2L);
+        when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(seatIds);
+
+        when(seatRepository.changeSeatsSoldByHold(eq(eventId), eq(holdGroupId), eq(userId), eq(now), eq(seatIds)))
+                .thenReturn(1);
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirm(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.HOLD_EXPIRED, ex.getErrorCode());
+
+        verify(seatRepository, never()).findAllById(anyList());
         verify(bookingRepository, never()).save(any());
         verify(confirmIdempotencyRepository, never()).save(any());
     }
 
     @Test
-    void confirm_idempotency_hit_but_differentDecision_throws_conflict() {
+    void confirm_success_happyPath() {
         long userId = 1L;
         long eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        String confirmKey = "confirm-key-1";
+
+        Instant now = HoldTimes.now(clock);
+        stubEventOnSale(eventId, now);
+
+        String paymentTxId = "p1";
         long amount = 1000L;
+        long holdGroupId = 55L;
+        String confirmKey = "ck1";
 
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, confirmKey, amount);
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, amount);
 
-        ConfirmIdempotency idem = ConfirmIdempotency.create(
-                paymentTxId, userId, confirmKey, 999L, holdGroupId, 777L
-        );
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.empty());
+        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey)).thenReturn(Optional.empty());
 
-        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId)).thenReturn(Optional.of(idem));
+        stubPayment(paymentTxId, amount, PaymentStatus.APPROVED);
 
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.CONFIRM_IDEMPOTENCY_CONFLICT);
-    }
-
-    @Test
-    void payment_not_found_throws_payment_idempotency_conflict() {
-        long userId = 1L, eventId = 10L;
-        ConfirmRequest req = new ConfirmRequest(99L, "ptx-missing", "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-        when(paymentRepository.getPaymentTxById("ptx-missing")).thenReturn(Optional.empty());
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT);
-    }
-
-    @Test
-    void payment_declined_throws_payment_declined() {
-        long userId = 1L, eventId = 10L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(99L, paymentTxId, "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx declined = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.DECLINED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(declined));
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_DECLINED);
-    }
-
-    @Test
-    void payment_timeout_throws_payment_timeout() {
-        long userId = 1L, eventId = 10L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(99L, paymentTxId, "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx timeout = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.TIMEOUT, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(timeout));
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_TIMEOUT);
-    }
-
-    @Test
-    void payment_amount_mismatch_throws_amount_mismatch() {
-        long userId = 1L, eventId = 10L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(99L, paymentTxId, "k", 999L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx approved = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.APPROVED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(approved));
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.AMOUNT_MISMATCH);
-    }
-
-    @Test
-    void hold_group_not_found_throws_hold_token_not_found() {
-        long userId = 1L, eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx approved = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.APPROVED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(approved));
-
-        when(holdGroupRepository.findValidHoldGroup(eq(holdGroupId), eq(userId), any()))
-                .thenReturn(Optional.empty());
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.HOLD_TOKEN_NOT_FOUND);
-    }
-
-    @Test
-    void hold_seats_empty_throws_hold_expired() {
-        long userId = 1L, eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx approved = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.APPROVED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(approved));
-
-        HoldGroup hg = HoldGroup.create(userId, Instant.now(clock).plusSeconds(10));
-        when(holdGroupRepository.findValidHoldGroup(eq(holdGroupId), eq(userId), any()))
-                .thenReturn(Optional.of(hg));
-
-        when(holdGroupSeatRepository.findValidSeatIds(eq(holdGroupId), eq(eventId), any()))
-                .thenReturn(List.of());
-
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
-        );
-
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.HOLD_EXPIRED);
-    }
-
-
-    @Test
-    void seat_update_count_mismatch_throws_hold_expired() {
-        long userId = 1L, eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, "k", 100L);
-
-        when(confirmIdempotencyRepository.findByPaymentTxId(anyString())).thenReturn(Optional.empty());
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(anyLong(), anyString())).thenReturn(Optional.empty());
-
-        PaymentTx approved = PaymentTx.create(paymentTxId, userId, 100L, PaymentStatus.APPROVED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(approved));
-
-        HoldGroup hg = HoldGroup.create(userId, Instant.now(clock).plusSeconds(10));
-        HoldGroup spyHg = spy(hg);
-        doReturn(holdGroupId).when(spyHg).getId();
-        when(holdGroupRepository.findValidHoldGroup(eq(holdGroupId), eq(userId), any()))
-                .thenReturn(Optional.of(spyHg));
+        HoldGroup hg = mock(HoldGroup.class);
+        when(hg.getId()).thenReturn(holdGroupId);
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.of(hg));
 
         List<Long> seatIds = List.of(1L, 2L);
-        when(holdGroupSeatRepository.findValidSeatIds(eq(holdGroupId), eq(eventId), any()))
-                .thenReturn(seatIds);
+        when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(seatIds);
 
-        when(seatRepository.changeSeatsSoldByHold(eq(eventId), eq(holdGroupId), eq(userId), any(), eq(seatIds)))
-                .thenReturn(1);
+        when(seatRepository.changeSeatsSoldByHold(eq(eventId), eq(holdGroupId), eq(userId), eq(now), eq(seatIds)))
+                .thenReturn(seatIds.size());
 
-        BusinessRuleViolationException ex = catchThrowableOfType(
-                () -> confirmService.confirm(userId, eventId, req),
-                BusinessRuleViolationException.class
+        Seat s1 = mock(Seat.class);
+        when(s1.getId()).thenReturn(1L);
+        when(s1.getPrice()).thenReturn(500L);
+
+        Seat s2 = mock(Seat.class);
+        when(s2.getId()).thenReturn(2L);
+        when(s2.getPrice()).thenReturn(500L);
+
+        when(seatRepository.findAllById(seatIds)).thenReturn(List.of(s1, s2));
+
+        Booking booking = mock(Booking.class);
+        when(booking.getId()).thenReturn(777L);
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+        BookingItem bi1 = BookingItem.create(777L, 1L, 500L);
+        BookingItem bi2 = BookingItem.create(777L, 2L, 500L);
+        when(bookingItemRepository.saveAll(anyList())).thenReturn(List.of(bi1, bi2));
+
+        when(holdGroupSeatRepository.deleteHoldGroupSeats(holdGroupId, eventId)).thenReturn(seatIds.size());
+
+        ConfirmIdempotency idemSaved = ConfirmIdempotency.create(
+                paymentTxId, userId, confirmKey, eventId, holdGroupId, 777L
         );
+        when(confirmIdempotencyRepository.save(any(ConfirmIdempotency.class))).thenReturn(idemSaved);
 
-        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.HOLD_EXPIRED);
+        ConfirmResponse res = confirmService.confirm(userId, eventId, req);
+
+        assertEquals(eventId, res.eventId());
+        assertEquals(paymentTxId, res.paymentTxId());
+        assertEquals(PaymentStatus.APPROVED, res.status());
+        assertEquals(amount, res.totalAmount());
+        assertEquals(2, res.items().size());
+
+        ArgumentCaptor<ConfirmIdempotency> idemCaptor = ArgumentCaptor.forClass(ConfirmIdempotency.class);
+        verify(confirmIdempotencyRepository).save(idemCaptor.capture());
+        assertEquals(777L, idemCaptor.getValue().getBookingId());
+
+        verify(holdGroupRepository).delete(hg);
+    }
+
+
+    @Test
+    void saveConfirmIdempotency_whenDuplicateKey_returnsExisting_ifSameDecision() {
+        long userId = 1L;
+        long eventId = 10L;
+
+        String paymentTxId = "p1";
+        long holdGroupId = 55L;
+        String confirmKey = "ck1";
+
+        ConfirmRequest req = ConfirmRequest.create(holdGroupId, paymentTxId, confirmKey, 4L);
+
+        Booking booking = mock(Booking.class);
+        when(booking.getId()).thenReturn(777L);
+
+        when(confirmIdempotencyRepository.save(any(ConfirmIdempotency.class)))
+                .thenThrow(dataIntegrity(UK_CONFIRM_PAYMENT_TX));
+
+        ConfirmIdempotency existing = ConfirmIdempotency.create(
+                paymentTxId, userId, confirmKey, eventId, holdGroupId, 777L
+        );
+        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId))
+                .thenReturn(Optional.of(existing));
+
+        ConfirmIdempotency result = confirmService.saveConfirmIdempotency(userId, eventId, req, booking);
+        assertSame(existing, result);
     }
 
     @Test
-    void save_confirm_idempotency_race_then_refetch_sameDecision_returns_existing() {
-        long userId = 1L, eventId = 10L;
-        long holdGroupId = 99L;
-        String paymentTxId = "ptx-1";
-        String confirmKey = "k";
-        long amount = 100L;
+    void confirmBooking_whenDuplicatePaymentTx_throwsBookingAlreadySaved() {
+        long userId = 1L;
+        long eventId = 10L;
 
-        ConfirmRequest req = new ConfirmRequest(holdGroupId, paymentTxId, confirmKey, amount);
+        ConfirmRequest req = ConfirmRequest.create(55L, "p1", "ck1", 4L);
 
-        ConfirmIdempotency existing =
-                ConfirmIdempotency.create(paymentTxId, userId, confirmKey, eventId, holdGroupId, 777L);
+        when(bookingRepository.save(any(Booking.class)))
+                .thenThrow(dataIntegrity(UK_BOOKINGS_PAYMENT_TX));
 
-        when(confirmIdempotencyRepository.findByPaymentTxId(paymentTxId))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(existing));
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirmBooking(userId, eventId, req)
+        );
+        assertEquals(ErrorCode.BOOKING_ALREADY_SAVED, ex.getErrorCode());
+    }
 
-        when(confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, confirmKey))
-                .thenReturn(Optional.empty());
-
-        PaymentTx approved = PaymentTx.create(paymentTxId, userId, amount, PaymentStatus.APPROVED, Instant.now(clock));
-        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(approved));
-
-        HoldGroup hg = HoldGroup.create(userId, Instant.now(clock).plusSeconds(10));
-        HoldGroup spyHg = spy(hg);
-        doReturn(holdGroupId).when(spyHg).getId();
-
-        when(holdGroupRepository.findValidHoldGroup(eq(holdGroupId), eq(userId), any()))
-                .thenReturn(Optional.of(spyHg));
-
-        List<Long> seatIds = List.of(1L);
-        when(holdGroupSeatRepository.findValidSeatIds(eq(holdGroupId), eq(eventId), any()))
-                .thenReturn(seatIds);
-
-        when(seatRepository.changeSeatsSoldByHold(eq(eventId), eq(holdGroupId), eq(userId), any(), eq(seatIds)))
-                .thenReturn(1);
-
-        Seat seat = mock(Seat.class);
-        when(seat.getId()).thenReturn(1L);
-        when(seat.getPrice()).thenReturn(100L);
-        when(seatRepository.findAllById(seatIds)).thenReturn(List.of(seat));
-
-        Booking booking = Booking.create(eventId, userId, paymentTxId);
-        Booking bookingSpy = spy(booking);
-        doReturn(777L).when(bookingSpy).getId();
-        when(bookingRepository.save(any())).thenReturn(bookingSpy);
+    @Test
+    void confirmBookingItems_whenDuplicateSeat_throwsBookingItemAlreadySaved() {
+        Seat s1 = mock(Seat.class);
+        when(s1.getId()).thenReturn(1L);
+        when(s1.getPrice()).thenReturn(500L);
 
         when(bookingItemRepository.saveAll(anyList()))
-                .thenReturn(List.of(BookingItem.create(777L, 1L, 100L)));
+                .thenThrow(dataIntegrity(UK_BOOKING_ITEMS_SEAT));
 
-        when(holdGroupSeatRepository.deleteHoldGroupSeats(anyLong(), anyLong())).thenReturn(1);
-
-        when(confirmIdempotencyRepository.save(any()))
-                .thenThrow(duplicateKey("uk_confirm_idempotencies_payment_tx"));
-
-        var res = confirmService.confirm(userId, eventId, req);
-
-        assertThat(res.bookingId()).isEqualTo(777L);
-        verify(confirmIdempotencyRepository, times(1)).save(any());
-        verify(confirmIdempotencyRepository, times(2)).findByPaymentTxId(paymentTxId);
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.confirmBookingItems(List.of(s1), 777L)
+        );
+        assertEquals(ErrorCode.BOOKING_ITEM_ALREADY_SAVED, ex.getErrorCode());
     }
 
-    private static DataIntegrityViolationException duplicateKey(String constraintName) {
-        ConstraintViolationException cve =
-                new ConstraintViolationException("dup", new SQLException("dup"), constraintName);
-        return new DataIntegrityViolationException("dup", cve);
+    private void stubPaymentRepoReturns(String paymentTxId, PaymentTx payment) {
+        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
     }
 
+    private PaymentTx paymentWith(long amount, PaymentStatus status) {
+        PaymentTx payment = mock(PaymentTx.class);
+        when(payment.getAmount()).thenReturn(amount);
+        when(payment.getStatus()).thenReturn(status);
+        return payment;
+    }
+
+    private void stubPaymentDeclined(String paymentTxId) {
+        PaymentTx payment = mock(PaymentTx.class);
+        when(payment.getStatus()).thenReturn(PaymentStatus.DECLINED);
+        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
+    }
+
+    private void stubPaymentTimeout(String paymentTxId) {
+        PaymentTx payment = mock(PaymentTx.class);
+        when(payment.getStatus()).thenReturn(PaymentStatus.TIMEOUT);
+        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
+    }
+
+    private void stubPaymentApproved(String paymentTxId, long amount) {
+        PaymentTx payment = mock(PaymentTx.class);
+        when(payment.getStatus()).thenReturn(PaymentStatus.APPROVED);
+        when(payment.getAmount()).thenReturn(amount);
+        when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
+    }
 }

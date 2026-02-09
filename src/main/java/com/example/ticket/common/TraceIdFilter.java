@@ -33,16 +33,12 @@ public class TraceIdFilter extends OncePerRequestFilter {
                 ? incoming
                 : UUID.randomUUID().toString().replace("-", "");
 
-        // 1) 어디서든 꺼내 쓰게
         request.setAttribute(TRACE_ATTR, traceId);
 
-        // 2) 기존 TraceContext 쓰고 싶으면 여기에 연결
         TraceContext.set(traceId);
 
-        // 3) 로그에 자동으로 찍히게
         MDC.put(MDC_KEY, traceId);
 
-        // 4) 응답에도 전파
         response.setHeader(TRACE_HEADER, traceId);
 
         try {

@@ -27,13 +27,17 @@ public class HoldGroup extends BaseTimeEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    private HoldGroup(Long userId, Instant expiresAt) {
+    @Column(name = "event_id", nullable = false)
+    private Long eventId;
+
+    private HoldGroup(Long userId, Instant expiresAt, Long eventId) {
         this.userId = userId;
         this.expiresAt = expiresAt;
+        this.eventId = eventId;
     }
 
-    public static HoldGroup create(Long userId, Instant expiresAt) {
-        return new HoldGroup(userId, expiresAt);
+    public static HoldGroup create(Long userId, Instant expiresAt, Long eventId) {
+        return new HoldGroup(userId, expiresAt, eventId);
     }
 
 }

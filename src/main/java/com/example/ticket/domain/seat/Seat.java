@@ -21,7 +21,6 @@ import java.util.Objects;
         indexes = {
                 @Index(name = "ix_seats_event", columnList = "event_id"),
                 @Index(name = "ix_seats_event_status", columnList = "event_id, status"),
-                @Index(name = "ix_seats_hold_expire", columnList = "status, hold_until")
         }
 )
 @Getter

@@ -1,5 +1,6 @@
 package com.example.ticket.repository;
 
+import com.example.ticket.domain.event.SeatStatus;
 import com.example.ticket.domain.seat.Seat;
 import com.example.ticket.repository.dto.SeatStatusCount;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -54,4 +55,8 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
                               long userId,
                               Instant now,
                               List<Long> seatIds);
+
+    long countByEventIdAndIdInAndStatus(long eventId, List<Long> seatIds, SeatStatus status);
 }
+
+

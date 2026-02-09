@@ -31,7 +31,7 @@ class AdminEventServiceTest {
     void createDraft_rejects_invalid_sales_window() {
         // given
         Instant openAt = Instant.parse("2026-01-13T10:00:00Z");
-        Instant closeAt = Instant.parse("2026-01-13T10:00:00Z"); // open == close (invalid)
+        Instant closeAt = Instant.parse("2026-01-13T10:00:00Z");
         AdminEventCreateRequest req = new AdminEventCreateRequest("concert", openAt, closeAt);
 
         // when / then

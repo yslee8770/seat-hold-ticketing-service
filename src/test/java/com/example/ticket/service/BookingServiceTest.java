@@ -161,7 +161,7 @@ class BookingServiceTest {
             Instant createdAt
     ) {
         Booking b = mockBookingForList(bookingId, eventId, paymentTxId, status, createdAt);
-        when(b.getUserId()).thenReturn(userId); // detail에서만 필요
+        when(b.getUserId()).thenReturn(userId);
         return b;
     }
 }

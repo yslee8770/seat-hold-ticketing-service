@@ -4,14 +4,15 @@ import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateRequest;
 import com.example.ticket.api.ticket.dto.HoldDto.HoldCreateResponse;
 import com.example.ticket.common.ErrorCode;
 import com.example.ticket.common.exception.BusinessRuleViolationException;
+import com.example.ticket.domain.event.Event;
+import com.example.ticket.domain.event.EventStatus;
+import com.example.ticket.domain.event.SeatStatus;
 import com.example.ticket.domain.hold.HoldGroup;
 import com.example.ticket.domain.hold.HoldGroupSeat;
 import com.example.ticket.domain.hold.HoldTimes;
 import com.example.ticket.domain.idempotency.HoldIdempotency;
 import com.example.ticket.domain.idempotency.SeatIdsCodec;
-import com.example.ticket.repository.HoldGroupRepository;
-import com.example.ticket.repository.HoldGroupSeatRepository;
-import com.example.ticket.repository.HoldIdempotencyRepository;
+import com.example.ticket.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -30,53 +31,78 @@ public class HoldService {
     private final HoldIdempotencyRepository holdIdempotencyRepository;
     private final HoldGroupRepository holdGroupRepository;
     private final HoldGroupSeatRepository holdGroupSeatRepository;
+    private final SeatRepository seatRepository;
+    private final EventRepository eventRepository;
 
     @Transactional
     public HoldCreateResponse hold(long userId, long eventId, HoldCreateRequest request, String idempotencyKey) {
-        String seatIdsKey = SeatIdsCodec.toCanonicalString(request.seatIds());
+        Instant now = HoldTimes.now(clock);
+        Instant expiresAt = HoldTimes.holdUntil(clock);
 
-        Optional<HoldIdempotency> idempotency = holdIdempotencyRepository.findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey);
-        if (idempotency.isPresent()) {
-            if (!idempotency.get().getSeatIdsKey().equals(seatIdsKey)) {
-                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
-            }
-            return HoldCreateResponse.from(idempotency.get());
+        validEvent(eventId, now);
+
+        List<Long> seatIds = getNormalizedSeatIds(request.seatIds());
+        checkHoldSeatsCount(userId, eventId, now, seatIds.size());
+
+        String seatIdsKey = SeatIdsCodec.toCanonicalString(seatIds);
+
+        HoldIdempotency idem = resolveOrCreateIdempotency(userId, eventId, idempotencyKey, seatIdsKey, now, expiresAt);
+
+        if (idem.isCompleted()) {
+            return HoldCreateResponse.from(idem);
         }
 
-        Instant expiresAt = HoldTimes.holdUntil(clock);
-        HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId, expiresAt));
-        List<Long> seatIds = getNormalizedSeatIds(request.seatIds());
+        HoldGroup holdGroup = holdGroupRepository.save(HoldGroup.create(userId, expiresAt, eventId));
+        int saved = createHoldSeats(eventId, seatIds, expiresAt, holdGroup);
 
-        int savedHoldGroupSeatsCount = createHoldSeats(eventId, seatIds, expiresAt, holdGroup);
-        return HoldCreateResponse.from(
-                createHoldIdempotency(
-                        userId,
-                        eventId,
-                        idempotencyKey,
-                        seatIdsKey,
-                        holdGroup,
-                        expiresAt,
-                        savedHoldGroupSeatsCount)
-        );
+        idem.holdComplete(holdGroup.getId(), saved);
+        holdIdempotencyRepository.save(idem);
+
+        return HoldCreateResponse.from(idem);
+    }
+
+
+    @Transactional(readOnly = true)
+    public void validEvent(long eventId, Instant now) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.EVENT_NOT_FOUND));
+        if (!event.getStatus().equals(EventStatus.OPEN) || event.getSalesOpenAt().isAfter(now) || !now.isBefore(event.getSalesCloseAt())) {
+            throw new BusinessRuleViolationException(ErrorCode.EVENT_NOT_ON_SALE);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void checkHoldSeatsCount(long userId, long eventId, Instant now, long requestSeatIdsCount) {
+        List<Long> holdGroupIds = holdGroupRepository.findActiveIds(userId, eventId, now);
+        if (!holdGroupIds.isEmpty()) {
+            long holdSeatsCount = holdGroupSeatRepository.countByEventIdAndHoldGroupIdInAndExpiresAtAfter(eventId, holdGroupIds, now);
+            if (holdSeatsCount + requestSeatIdsCount > 4) {
+                throw new BusinessRuleViolationException(ErrorCode.HOLD_LIMIT_EXCEEDED);
+            }
+        } else {
+            if (requestSeatIdsCount > 4) {
+                throw new BusinessRuleViolationException(ErrorCode.HOLD_LIMIT_EXCEEDED);
+            }
+        }
     }
 
     @Transactional
-    public HoldIdempotency createHoldIdempotency(long userId, long eventId, String idempotencyKey, String seatIdsKey, HoldGroup holdGroup, Instant expiresAt, int savedHoldGroupSeatsCount) {
+    protected HoldIdempotency createHoldIdempotency(
+            long userId,
+            long eventId,
+            String idempotencyKey,
+            String seatIdsKey,
+            Instant expiresAt,
+            Instant now
+    ) {
         try {
             return holdIdempotencyRepository.save(
-                    HoldIdempotency.create(
-                            userId,
-                            idempotencyKey,
-                            eventId,
-                            seatIdsKey,
-                            holdGroup.getId(),
-                            expiresAt,
-                            savedHoldGroupSeatsCount)
+                    HoldIdempotency.create(userId, idempotencyKey, eventId, seatIdsKey, expiresAt)
             );
         } catch (DataIntegrityViolationException e) {
             if (!isConstraint(e, "uk_hold_idempotency_user_event_key")) {
                 throw e;
             }
+
             HoldIdempotency existing = holdIdempotencyRepository
                     .findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey)
                     .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT));
@@ -85,13 +111,44 @@ public class HoldService {
                 throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
             }
 
-            return existing;
+            if (existing.isCompleted()) {
+                return existing;
+            }
+
+            if (existing.getExpiresAt().isAfter(now)) {
+                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_IN_PROGRESS);
+            }
+
+            int deleted = holdIdempotencyRepository.deleteStaleInProgress(
+                    userId, eventId, idempotencyKey, now
+            );
+            if (deleted == 1) {
+                return holdIdempotencyRepository.save(
+                        HoldIdempotency.create(userId, idempotencyKey, eventId, seatIdsKey, expiresAt)
+                );
+            }
+            HoldIdempotency reread = holdIdempotencyRepository
+                    .findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey)
+                    .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT));
+
+            if (!reread.getSeatIdsKey().equals(seatIdsKey)) {
+                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
+            }
+            if (reread.isCompleted()) {
+                return reread;
+            }
+            throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_IN_PROGRESS);
         }
     }
+
 
     @Transactional
     public int createHoldSeats(long eventId, List<Long> seatIds, Instant expiresAt, HoldGroup holdGroup) {
         try {
+            long seatsSize = seatRepository.countByEventIdAndIdInAndStatus(eventId, seatIds, SeatStatus.AVAILABLE);
+            if (seatsSize != seatIds.size()) {
+                throw new BusinessRuleViolationException(ErrorCode.SEAT_NOT_AVAILABLE);
+            }
             List<HoldGroupSeat> savedHoldGroupSeats = holdGroupSeatRepository.saveAll(
                     seatIds.stream()
                             .map(seatId -> HoldGroupSeat.create(seatId, eventId, expiresAt, holdGroup.getId()))
@@ -103,6 +160,56 @@ public class HoldService {
             }
             throw e;
         }
+    }
+
+    @Transactional
+    protected HoldIdempotency resolveOrCreateIdempotency(
+            long userId,
+            long eventId,
+            String idempotencyKey,
+            String seatIdsKey,
+            Instant now,
+            Instant expiresAt
+    ) {
+        Optional<HoldIdempotency> found =
+                holdIdempotencyRepository.findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey);
+
+        if (found.isPresent()) {
+            HoldIdempotency existing = found.get();
+
+            if (!existing.getSeatIdsKey().equals(seatIdsKey)) {
+                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
+            }
+
+            if (existing.isCompleted()) {
+                return existing;
+            }
+
+            if (existing.getExpiresAt().isAfter(now)) {
+                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_IN_PROGRESS);
+            }
+
+            int deleted = holdIdempotencyRepository.deleteStaleInProgress(
+                    userId, eventId, idempotencyKey, now
+            );
+
+            if (deleted == 0) {
+                HoldIdempotency reread = holdIdempotencyRepository
+                        .findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey)
+                        .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT));
+
+                if (!reread.getSeatIdsKey().equals(seatIdsKey)) {
+                    throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
+                }
+                if (reread.isCompleted()) {
+                    return reread;
+                }
+                throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_IN_PROGRESS);
+            }
+
+        }
+
+        return createHoldIdempotency(userId, eventId, idempotencyKey, seatIdsKey, expiresAt, now);
     }
 
     private boolean isConstraint(Throwable e, String constraintName) {

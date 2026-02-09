@@ -4,6 +4,7 @@ import com.example.ticket.domain.hold.HoldGroupSeat;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,4 +30,8 @@ public interface HoldGroupSeatRepository extends JpaRepository<HoldGroupSeat, Lo
             and hgs.eventId = :eventId
             """)
     int deleteHoldGroupSeats(long holdGroupId, long eventId);
+
+    long countByEventIdAndHoldGroupIdInAndExpiresAtAfter(long eventId,
+                                                         List<Long> holdGroupIds,
+                                                         Instant now);
 }

@@ -20,6 +20,14 @@ public final class ConfirmDto {
             @NotBlank String confirmIdempotencyKey,
             @NotNull @PositiveOrZero Long amount
     ) {
+        public static ConfirmRequest create(
+                long holdGroupId,
+                String paymentTxId,
+                String confirmIdempotencyKey,
+                Long amount
+        ){
+            return new ConfirmRequest(holdGroupId, paymentTxId, confirmIdempotencyKey, amount);
+        }
     }
 
     public record ConfirmResponse(

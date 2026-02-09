@@ -20,7 +20,7 @@ public class ApiResponseAdvice implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(MethodParameter returnType, Class converterType) {
-        return true; // 전체 적용
+        return true;
     }
 
     @Override

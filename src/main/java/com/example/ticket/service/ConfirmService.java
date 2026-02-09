@@ -7,6 +7,8 @@ import com.example.ticket.common.ErrorCode;
 import com.example.ticket.common.exception.BusinessRuleViolationException;
 import com.example.ticket.domain.booking.Booking;
 import com.example.ticket.domain.booking.BookingItem;
+import com.example.ticket.domain.event.Event;
+import com.example.ticket.domain.event.EventStatus;
 import com.example.ticket.domain.hold.HoldGroup;
 import com.example.ticket.domain.hold.HoldTimes;
 import com.example.ticket.domain.idempotency.ConfirmIdempotency;
@@ -38,9 +40,13 @@ public class ConfirmService {
     private final HoldGroupSeatRepository holdGroupSeatRepository;
     private final SeatRepository seatRepository;
     private final Clock clock;
+    private final EventRepository eventRepository;
 
     @Transactional
     public ConfirmResponse confirm(long userId, long eventId, ConfirmRequest request) {
+        Instant now = HoldTimes.now(clock);
+        validEvent(eventId, now);
+
         Optional<ConfirmIdempotency> confirmIdempotency =
                 confirmIdempotencyRepository.findByPaymentTxId(request.paymentTxId())
                         .or(() -> confirmIdempotencyRepository.findByUserIdAndConfirmKey(userId, request.confirmIdempotencyKey()));
@@ -58,7 +64,6 @@ public class ConfirmService {
         }
         PaymentTx payment = getPayment(request.paymentTxId(), request.amount());
 
-        Instant now = HoldTimes.now(clock);
         HoldGroup holdGroup = holdGroupRepository.findValidHoldGroup(request.holdGroupId(), userId, now)
                 .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.HOLD_TOKEN_NOT_FOUND));
         List<Long> holdGroupSeatIds = getHoldSeatIds(eventId, request, now);
@@ -78,7 +83,13 @@ public class ConfirmService {
                         .map(BookingItemDto::from)
                         .toList());
     }
-
+    @Transactional(readOnly = true)
+    public void validEvent(long eventId, Instant now) {
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.EVENT_NOT_FOUND));
+        if (!event.getStatus().equals(EventStatus.OPEN) || event.getSalesOpenAt().isAfter(now) || !now.isBefore(event.getSalesCloseAt())) {
+            throw new BusinessRuleViolationException(ErrorCode.EVENT_NOT_ON_SALE);
+        }
+    }
     @Transactional
     public void deleteSoldHolds(long eventId, HoldGroup holdGroup, int holdGroupSeatSize) {
         int holdGroupSeatsDeleteCount = holdGroupSeatRepository.deleteHoldGroupSeats(holdGroup.getId(), eventId);
