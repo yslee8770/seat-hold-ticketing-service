@@ -245,7 +245,7 @@ class ConfirmServiceTest {
 
         stubPayment(paymentTxId, amount, PaymentStatus.APPROVED);
 
-        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.empty());
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, eventId, now)).thenReturn(Optional.empty());
 
         BusinessRuleViolationException ex = assertThrows(
                 BusinessRuleViolationException.class,
@@ -278,7 +278,7 @@ class ConfirmServiceTest {
         PaymentTx payment = paymentWith(amount, PaymentStatus.APPROVED);
         stubPaymentRepoReturns(paymentTxId, payment);
 
-        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now))
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, eventId, now))
                 .thenReturn(Optional.of(mock(HoldGroup.class)));
 
         when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(List.of());
@@ -314,7 +314,7 @@ class ConfirmServiceTest {
 
         HoldGroup hg = mock(HoldGroup.class);
         when(hg.getId()).thenReturn(holdGroupId);
-        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.of(hg));
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, eventId, now)).thenReturn(Optional.of(hg));
 
         List<Long> seatIds = List.of(1L, 2L);
         when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(seatIds);
@@ -355,7 +355,7 @@ class ConfirmServiceTest {
 
         HoldGroup hg = mock(HoldGroup.class);
         when(hg.getId()).thenReturn(holdGroupId);
-        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, now)).thenReturn(Optional.of(hg));
+        when(holdGroupRepository.findValidHoldGroup(holdGroupId, userId, eventId, now)).thenReturn(Optional.of(hg));
 
         List<Long> seatIds = List.of(1L, 2L);
         when(holdGroupSeatRepository.findValidSeatIds(holdGroupId, eventId, now)).thenReturn(seatIds);

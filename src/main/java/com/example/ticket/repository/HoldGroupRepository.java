@@ -14,21 +14,22 @@ public interface HoldGroupRepository extends JpaRepository<HoldGroup, Long> {
     void deleteAllByExpiresAtLessThanEqual(Instant now);
 
     @Query("""
-            select hg
-            from HoldGroup hg
-            where hg.id = :holdGroupId
-              and hg.userId = :userId
-              and hg.expiresAt > :now
+                select hg
+                from HoldGroup hg
+                where hg.id = :holdGroupId
+                  and hg.userId = :userId
+                  and hg.eventId = :eventId
+                  and hg.expiresAt > :now
             """)
-    Optional<HoldGroup> findValidHoldGroup(long holdGroupId, long userId, Instant now);
+    Optional<HoldGroup> findValidHoldGroup(long holdGroupId, long userId, long eventId, Instant now);
 
     @Query("""
-        select hg.id
-        from HoldGroup hg
-        where hg.userId = :userId
-          and hg.eventId = :eventId
-          and hg.expiresAt > :now
-        """)
+            select hg.id
+            from HoldGroup hg
+            where hg.userId = :userId
+              and hg.eventId = :eventId
+              and hg.expiresAt > :now
+            """)
     List<Long> findActiveIds(@Param("userId") long userId,
                              @Param("eventId") long eventId,
                              @Param("now") Instant now);

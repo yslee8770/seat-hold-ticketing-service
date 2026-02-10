@@ -123,9 +123,27 @@ public class HoldService {
                     userId, eventId, idempotencyKey, now
             );
             if (deleted == 1) {
-                return holdIdempotencyRepository.save(
-                        HoldIdempotency.create(userId, idempotencyKey, eventId, seatIdsKey, expiresAt)
-                );
+                try {
+                    return holdIdempotencyRepository.save(
+                            HoldIdempotency.create(userId, idempotencyKey, eventId, seatIdsKey, expiresAt)
+                    );
+                } catch (DataIntegrityViolationException e2) {
+                    if (!isConstraint(e2, "uk_hold_idempotency_user_event_key")) {
+                        throw e2;
+                    }
+
+                    HoldIdempotency reread = holdIdempotencyRepository
+                            .findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey)
+                            .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT));
+
+                    if (!reread.getSeatIdsKey().equals(seatIdsKey)) {
+                        throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_CONFLICT);
+                    }
+                    if (reread.isCompleted()) {
+                        return reread;
+                    }
+                    throw new BusinessRuleViolationException(ErrorCode.IDEMPOTENCY_IN_PROGRESS);
+                }
             }
             HoldIdempotency reread = holdIdempotencyRepository
                     .findByUserIdAndEventIdAndIdempotencyKey(userId, eventId, idempotencyKey)

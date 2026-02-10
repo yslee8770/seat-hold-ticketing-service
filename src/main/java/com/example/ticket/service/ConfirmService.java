@@ -64,7 +64,7 @@ public class ConfirmService {
         }
         PaymentTx payment = getPayment(request.paymentTxId(), request.amount());
 
-        HoldGroup holdGroup = holdGroupRepository.findValidHoldGroup(request.holdGroupId(), userId, now)
+        HoldGroup holdGroup = holdGroupRepository.findValidHoldGroup(request.holdGroupId(), userId, eventId, now)
                 .orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.HOLD_TOKEN_NOT_FOUND));
         List<Long> holdGroupSeatIds = getHoldSeatIds(eventId, request, now);
 
@@ -83,6 +83,7 @@ public class ConfirmService {
                         .map(BookingItemDto::from)
                         .toList());
     }
+
     @Transactional(readOnly = true)
     public void validEvent(long eventId, Instant now) {
         Event event = eventRepository.findById(eventId).orElseThrow(() -> new BusinessRuleViolationException(ErrorCode.EVENT_NOT_FOUND));
@@ -90,6 +91,7 @@ public class ConfirmService {
             throw new BusinessRuleViolationException(ErrorCode.EVENT_NOT_ON_SALE);
         }
     }
+
     @Transactional
     public void deleteSoldHolds(long eventId, HoldGroup holdGroup, int holdGroupSeatSize) {
         int holdGroupSeatsDeleteCount = holdGroupSeatRepository.deleteHoldGroupSeats(holdGroup.getId(), eventId);

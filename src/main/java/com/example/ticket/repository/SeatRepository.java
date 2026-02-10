@@ -18,11 +18,11 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     int deleteAllByEventId(@Param("eventId") long eventId);
 
     @Query("""
-        select new com.example.ticket.repository.dto.SeatStatusCount(s.status, count(s))
-        from Seat s
-        where s.eventId = :eventId
-        group by s.status
-    """)
+                select new com.example.ticket.repository.dto.SeatStatusCount(s.status, count(s))
+                from Seat s
+                where s.eventId = :eventId
+                group by s.status
+            """)
     List<SeatStatusCount> countByStatus(@Param("eventId") long eventId);
 
     List<Seat> findAllByEventIdOrderByZoneCodeAscSeatNoAsc(Long eventId);
