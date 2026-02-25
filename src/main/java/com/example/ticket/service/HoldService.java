@@ -70,6 +70,7 @@ public class HoldService {
         }
     }
 
+    //todo HOLD 2번시 경합 해결
     @Transactional(readOnly = true)
     public void checkHoldSeatsCount(long userId, long eventId, Instant now, long requestSeatIdsCount) {
         List<Long> holdGroupIds = holdGroupRepository.findActiveIds(userId, eventId, now);

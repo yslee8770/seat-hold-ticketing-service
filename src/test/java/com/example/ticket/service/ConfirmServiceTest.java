@@ -79,6 +79,8 @@ class ConfirmServiceTest {
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
     }
 
+
+
     private void stubPayment(String paymentTxId, long amount, PaymentStatus status) {
         PaymentTx payment = mock(PaymentTx.class);
         when(payment.getAmount()).thenReturn(amount);
@@ -464,6 +466,26 @@ class ConfirmServiceTest {
         assertEquals(ErrorCode.BOOKING_ITEM_ALREADY_SAVED, ex.getErrorCode());
     }
 
+    @Test
+    void getPayment_PAYMENT_IDEMPOTENCY_CONFLICT(){
+        stubPaymentNothing("1L");
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.getPayment("1L", 777L)
+        );
+        assertEquals(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT, ex.getErrorCode());
+    }
+
+    @Test
+    void getPayment_PAYMENT_TIMEOUT(){
+        stubPaymentTimeout("1L");
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> confirmService.getPayment("1L", 777L)
+        );
+        assertEquals(ErrorCode.PAYMENT_TIMEOUT, ex.getErrorCode());
+    }
+
     private void stubPaymentRepoReturns(String paymentTxId, PaymentTx payment) {
         when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
     }
@@ -475,11 +497,17 @@ class ConfirmServiceTest {
         return payment;
     }
 
+    private void stubPaymentNothing(String paymentTxId) {
+        when(paymentRepository.getPaymentTxById(paymentTxId))
+                .thenReturn(Optional.empty());
+    }
+
     private void stubPaymentDeclined(String paymentTxId) {
         PaymentTx payment = mock(PaymentTx.class);
         when(payment.getStatus()).thenReturn(PaymentStatus.DECLINED);
         when(paymentRepository.getPaymentTxById(paymentTxId)).thenReturn(Optional.of(payment));
     }
+
 
     private void stubPaymentTimeout(String paymentTxId) {
         PaymentTx payment = mock(PaymentTx.class);

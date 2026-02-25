@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
@@ -38,11 +39,16 @@ class HoldServiceTest {
     private static final String UK_HOLD_GROUP_SEATS = "uk_hold_group_seats_seat_id_event_id";
     private static final String UK_HOLD_IDEMPOTENCY = "uk_hold_idempotency_user_event_key";
 
-    @Mock HoldIdempotencyRepository holdIdempotencyRepository;
-    @Mock HoldGroupRepository holdGroupRepository;
-    @Mock HoldGroupSeatRepository holdGroupSeatRepository;
-    @Mock SeatRepository seatRepository;
-    @Mock EventRepository eventRepository;
+    @Mock
+    HoldIdempotencyRepository holdIdempotencyRepository;
+    @Mock
+    HoldGroupRepository holdGroupRepository;
+    @Mock
+    HoldGroupSeatRepository holdGroupSeatRepository;
+    @Mock
+    SeatRepository seatRepository;
+    @Mock
+    EventRepository eventRepository;
 
     private HoldService holdService;
     private Clock clock;
@@ -65,6 +71,12 @@ class HoldServiceTest {
         when(event.getStatus()).thenReturn(EventStatus.OPEN);
         when(event.getSalesOpenAt()).thenReturn(now.minusSeconds(1));
         when(event.getSalesCloseAt()).thenReturn(now.plusSeconds(60));
+        when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
+    }
+
+    private void stubEventNotOnSale(long eventId, Instant now) {
+        Event event = mock(Event.class);
+        when(event.getStatus()).thenReturn(EventStatus.CLOSED);
         when(eventRepository.findById(eventId)).thenReturn(Optional.of(event));
     }
 
@@ -393,6 +405,54 @@ class HoldServiceTest {
         HoldIdempotency result = holdService.resolveOrCreateIdempotency(userId, eventId, key, seatIdsKey, now, newExpiresAt);
         assertSame(newlySaved, result);
     }
+
+    @Test
+    void validEvent_whenEventNotOnSale() {
+        Instant now = HoldTimes.now(clock);
+        long eventId = 1L;
+        stubEventNotOnSale(eventId, now);
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> holdService.validEvent(eventId, now)
+        );
+        assertEquals(ErrorCode.EVENT_NOT_ON_SALE, ex.getErrorCode());
+    }
+
+    @Test
+    void checkHoldSeatsCount_whenHoldSeatsCountPlusRequestSeatIdsCountOverFour() {
+        List<Long> holdGroupIds = new ArrayList<>();
+        holdGroupIds.add(1L);
+        holdGroupIds.add(2L);
+        holdGroupIds.add(3L);
+        long userId = 1L;
+        long eventId = 1L;
+        Instant now = HoldTimes.now(clock);
+
+        when(holdGroupRepository.findActiveIds(userId, eventId, now)).thenReturn(holdGroupIds);
+        when(holdGroupSeatRepository.countByEventIdAndHoldGroupIdInAndExpiresAtAfter(userId, holdGroupIds, now)).thenReturn(3L);
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> holdService.checkHoldSeatsCount(userId, eventId, now,2L)
+        );
+        assertEquals(ErrorCode.HOLD_LIMIT_EXCEEDED, ex.getErrorCode());
+    }
+    @Test
+    void checkHoldSeatsCount_whenRequestSeatIdsCountOverFour() {
+        long userId = 1L;
+        long eventId = 1L;
+        Instant now = HoldTimes.now(clock);
+
+        when(holdGroupRepository.findActiveIds(userId, eventId, now)).thenReturn(new ArrayList<>());
+
+        BusinessRuleViolationException ex = assertThrows(
+                BusinessRuleViolationException.class,
+                () -> holdService.checkHoldSeatsCount(userId, eventId, now,5L)
+        );
+        assertEquals(ErrorCode.HOLD_LIMIT_EXCEEDED, ex.getErrorCode());
+    }
+
 
     private static DataIntegrityViolationException dataIntegrity(String constraintName) {
         ConstraintViolationException cve =

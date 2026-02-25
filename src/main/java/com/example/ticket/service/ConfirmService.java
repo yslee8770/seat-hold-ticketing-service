@@ -98,6 +98,7 @@ public class ConfirmService {
         if (holdGroupSeatSize != holdGroupSeatsDeleteCount) {
             log.debug("holdGroupSeatSize: {}", holdGroupSeatSize);
             log.debug("holdGroupSeatsDeleteCount: {}", holdGroupSeatsDeleteCount);
+            throw new BusinessRuleViolationException(ErrorCode.HOLD_GROUP_SIZE_MISMATCH);
         }
         holdGroupRepository.delete(holdGroup);
     }

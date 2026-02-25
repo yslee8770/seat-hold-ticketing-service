@@ -29,6 +29,7 @@ public enum ErrorCode {
     PAYMENT_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "Payment timeout"),
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Idempotency conflict"),
     AMOUNT_MISMATCH(HttpStatus.CONFLICT, "Amount mismatch"),
+    HOLD_GROUP_SIZE_MISMATCH(HttpStatus.CONFLICT, "holdGroup size and holdDelete size mismatch"),
     INVALID_EVENT_SALES_WINDOW(HttpStatus.BAD_REQUEST, "Invalid sales window"),
 
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Validation failed"),
