@@ -1,7 +1,7 @@
 # Seat Hold Ticketing
 
 ## 목표(0.1v)
-- 기능 구현이 아니라 **규칙(불변식/원자성/멱등)을 테스트로 증명**한 상태로 “마감”
+- 기능 구현이 아니라 **규칙(불변식/원자성/멱등)을 테스트로 증명**한 상태
 - 과한 확장(큐/알림/대기열/환불 등)은 0.2+로 미룸
 
 ---
@@ -26,7 +26,7 @@
 ### HOLD
 - All-or-Nothing: seatIds 중 하나라도 못 잡으면 전체 실패
 - 멱등:
-  - 같은 (userId,eventId,idempotencyKey) 재호출 → **동일 결과**
+  - 같은 (userId,eventId,idempotencyKey) 재호출 → 동일 결과
   - 같은 key인데 seatIds가 다르면 → **IDEMPOTENCY_CONFLICT**
 - OnSale 조건 위반 시 HOLD 거절
 - 유저 HOLD limit(<=4) 위반 시 HOLD 거절
@@ -46,13 +46,13 @@
 
 ---
 
-## 0.1v에서 수정/보완한 것(최근 반영)
+## 0.1v에서 수정/보완한 것
 ### 1) deleteSoldHolds() 삭제 개수 mismatch 처리
 - 기존: mismatch면 로그만 찍고 계속 진행 가능(=confirm이 성공할 여지)
 - 변경: mismatch면 예외 throw → 트랜잭션 롤백(0.1v 규칙 증명에 맞춤)
 - 테스트: mismatch 상황에서 예외 + holdGroup delete 호출 안됨 검증
 
-### 2) 테스트 커버리지 보강(필수 구멍 메움)
+### 2) 테스트 커버리지 보강
 - HoldService:
   - EVENT_NOT_ON_SALE 거절
   - HOLD_LIMIT_EXCEEDED(기존 hold + 신규 요청, 요청 자체 > 4)
@@ -75,7 +75,7 @@
 
 ---
 
-## 0.1v 마감 조건(내 기준)
+## 0.1v 
 - 위 불변식에 대응하는 테스트가 모두 통과
 - confirm/hold/expire 경계 케이스에서 “성공하면 안 되는 성공”이 없음
 - Known limitation을 정확히 문서화하고 0.2 백로그로 분리
@@ -85,8 +85,8 @@
 # v0.2
 
 ## 0.2 목표
-- 0.1v에서 남긴 “원자성/정합성/관측성” 구멍을 **DB-중심으로 메우기**
-- 기능 확장보다 “동시성/운영” 레벨을 한 단계 올리는 버전
+- 0.1v에서 남긴 원자성/정합성/관측성 구멍을 DB-중심으로 
+- 기능 확장보다 동시성/운영 레벨을 한 단계 올리는 버전
 
 ---
 
@@ -95,13 +95,13 @@
 - 동시 HOLD 2개가 같은 유저로 들어오면 limit 우회 가능
 
 ### 옵션 1: 유저 단위 serialize(가장 단순/안전)
-- (userId,eventId) 단위로 **DB row lock**을 잡고 hold 진행
+- (userId,eventId) 단위로 DB row lock을 잡고 hold 진행
 - 구현 후보:
   - `users`(또는 `user_event_hold_limit`) 테이블에 (userId,eventId) row를 만들고 `SELECT ... FOR UPDATE`
 - 장점: 이해/구현/증명 쉬움, 테스트로 재현 가능
 - 단점: 유저 단위로 HOLD가 직렬화됨(하지만 limit 규칙 자체가 유저 단위라 합리적)
 
-### 옵션 2: 카운터 테이블 + 조건부 업데이트(가장 “스펙스럽게”)
+### 옵션 2: 카운터 테이블 + 조건부 업데이트
 - `user_event_hold_counter(user_id,event_id,held_count,version/updated_at)`
 - HOLD 시:
   - `UPDATE ... SET held_count = held_count + :n WHERE held_count + :n <= 4`
@@ -130,7 +130,7 @@
 
 ---
 
-## (C) 통합 테스트를 “진짜 DB 경합”으로 끌어올리기(Testcontainers)
+## (C) 통합 테스트를 진짜 DB 경합으로(Testcontainers)
 ### 목표
 - Mockito 단위 테스트만으로는 유니크 제약/락/트랜잭션 경합을 ‘증명’하기 부족
 - 0.2에서 Testcontainers + 멀티스레드로 “진짜 레이스”를 재현
