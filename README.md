@@ -33,7 +33,7 @@
 
 ### EXPIRE(SWEEP)
 - 만료된 hold_group_seats / hold_groups는 조건부로 정리됨
-- sweep vs confirm 경합 시 데이터가 깨지지 않아야 함(최소한 “더블 성공”은 없어야 함)
+- sweep vs confirm 경합 시 데이터가 깨지지 않아야 함(최소한 더블 성공은 없어야 함)
 
 ### CONFIRM
 - OnSale 조건 위반 시 confirm 거절
@@ -77,7 +77,7 @@
 
 ## 0.1v 
 - 위 불변식에 대응하는 테스트가 모두 통과
-- confirm/hold/expire 경계 케이스에서 “성공하면 안 되는 성공”이 없음
+- confirm/hold/expire 경계 케이스에서 성공하면 안 되는 성공이 없음
 - Known limitation을 정확히 문서화하고 0.2 백로그로 분리
 
 ---
@@ -116,13 +116,13 @@
 
 ## (B) 좌석 조회에서 HELD 상태 노출(UX/정합성)
 ### 문제
-- 현재 HOLD는 hold_group_seats에만 있으므로 seats 조회만 하면 “모두 AVAILABLE처럼 보일” 수 있음
+- 현재 HOLD는 hold_group_seats에만 있으므로 seats 조회만 하면 모두 AVAILABLE처럼 보일 수 있음
 
 ### 구현 방향
 - seats 조회 시:
   - `LEFT JOIN hold_group_seats` where `expires_at > now`
   - joined row 존재하면 상태를 `HELD`로 계산해서 응답 DTO에 내려줌
-- seats 테이블을 바꾸지 않고도 “조회 응답”은 HELD를 가질 수 있음
+- seats 테이블을 바꾸지 않고도 조회 응답은 HELD를 가질 수 있음
 
 ### 0.2 테스트
 - HOLD 생성 후 조회 시 해당 seat이 HELD로 보이는지
@@ -132,8 +132,7 @@
 
 ## (C) 통합 테스트를 진짜 DB 경합으로(Testcontainers)
 ### 목표
-- Mockito 단위 테스트만으로는 유니크 제약/락/트랜잭션 경합을 ‘증명’하기 부족
-- 0.2에서 Testcontainers + 멀티스레드로 “진짜 레이스”를 재현
+- 0.2에서 Testcontainers + 멀티스레드로 경합 재현
 
 ### 필수 시나리오
 - 같은 좌석 동시 HOLD 경쟁(한쪽만 성공)
@@ -147,7 +146,7 @@
   - HOLD 성공/실패 사유 분포
   - confirm 실패 사유 분포
   - sweep 삭제 건수
-- “장애/이상징후를 알 수 있는 수준”까지만(과한 APM/대시보드X)
+- 장애/이상징후를 알 수 있는 수준까지만
 
 ---
 
