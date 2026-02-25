@@ -1,4 +1,4 @@
-# Seat Hold Ticketing — v0.1 정리(내부 노트)
+# Seat Hold Ticketing
 
 ## 목표(0.1v)
 - 기능 구현이 아니라 **규칙(불변식/원자성/멱등)을 테스트로 증명**한 상태로 “마감”
